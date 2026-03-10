@@ -1,0 +1,11 @@
+Flask
+Werkzeug
+requests
+feedparser
+numpy
+opencv-python-headless
+Pillow
+ollama
+gTTS
+pysocks
+stem

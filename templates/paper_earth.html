@@ -1,0 +1,2567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRONTIERLAB_ATLAS // PHD_LAB_JOURNAL_GEONAV</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23050f12'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%2300FFD1'/%3E%3Ccircle cx='32' cy='32' r='12' fill='none' stroke='%2300FFD1' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%2300FFD1' stroke-width='2' opacity='.65'/%3E%3Cpath d='M32 32 L54 18' stroke='%23FF0055' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
+    
+    <!-- Leaflet & FontAwesome & Chart.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --neon-cyan: #00FFD1;
+            --neon-pink: #FF0055;
+            --neon-amber: #FFA600;
+            --bg-dark: #050505;
+            --glass-bg: rgba(5, 20, 20, 0.85);
+            --glass-border: 1px solid rgba(0, 255, 209, 0.3);
+            --scan-line-color: rgba(0, 255, 209, 0.1);
+        }
+
+        
+
+        /* --- Terminal Console（固定在右下角面板内，非浮窗） --- */
+        .terminal-console {
+            position: relative;
+            width: 100%;
+            flex: 1;
+            min-height: 140px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(0, 255, 209, 0.25);
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: var(--neon-cyan);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        
+        .terminal-line {
+            margin: 2px 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.25;
+        }
+        
+        .terminal-line.info { color: var(--neon-cyan); }
+        .terminal-line.success { color: #0f0; }
+        .terminal-line.warning { color: var(--neon-amber); }
+        .terminal-line.error { color: var(--neon-pink); }
+
+        /* --- News Ticker --- */
+        .news-ticker {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 40px;
+            background: linear-gradient(90deg, #000 0%, #0a0a0a 50%, #000 100%);
+            border-bottom: 2px solid var(--neon-cyan);
+            z-index: 2000;
+            overflow: hidden;
+        }
+        
+        .ticker-label {
+            position: absolute;
+            left: 0; top: 0;
+            width: 120px;
+            height: 100%;
+            background: var(--neon-pink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #fff;
+            z-index: 1;
+        }
+        
+        .ticker-content {
+            position: absolute;
+            left: 120px; right: 0;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            animation: scroll-left 60s linear infinite;
+        }
+        
+        .ticker-item {
+            display: inline-block;
+            padding: 0 30px;
+            font-size: 12px;
+            color: var(--neon-cyan);
+        }
+        
+        .ticker-item .highlight {
+            color: var(--neon-amber);
+            font-weight: bold;
+        }
+        
+        .ticker-item .lab-name {
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        body { margin: 0; padding: 0; background: var(--bg-dark); color: var(--neon-cyan); font-family: 'Courier New', monospace; overflow: hidden; }
+        
+        #map {
+            height: calc(100vh - 240px); /* 顶部ticker 40 + 底部dashboard 200 */
+            min-height: 320px;
+            margin-top: 40px;
+            width: 100vw;
+            z-index: 1;
+            background: #0f141a; /* noWrap边缘空白时与dark basemap海洋色一致 */
+        }
+
+        .leaflet-container {
+            background: #0f141a;
+        }
+        
+        /* --- CRT Scanline Effect --- */
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 999;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* --- UI Overlay (Sidebar) --- */
+        .sidebar {
+            position: absolute;
+            top: 40px; left: 0; bottom: 0;
+            width: 380px;
+            background: var(--glass-bg);
+            border-right: var(--glass-border);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        
+        .header {
+            padding: 20px;
+            border-bottom: var(--glass-border);
+            text-align: center;
+            position: relative;
+        }
+        
+        h1 { 
+            margin: 0; 
+            font-size: 24px; 
+            letter-spacing: 4px; 
+            text-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .version-tag {
+            margin-top: 3px;
+            font-size: 10px;
+            color: #9ec;
+            letter-spacing: 1px;
+        }
+        
+        .status-bar {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .info-btn {
+            position: fixed;
+            top: 46px;
+            right: 10px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1px solid var(--neon-cyan);
+            background: rgba(0, 0, 0, 0.68);
+            color: var(--neon-cyan);
+            font-family: inherit;
+            font-size: 10px;
+            line-height: 16px;
+            text-align: center;
+            cursor: pointer;
+            padding: 0;
+            z-index: 2600;
+        }
+
+        .info-btn:hover {
+            background: rgba(0, 255, 209, 0.15);
+        }
+
+        .info-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            background: rgba(0, 0, 0, 0.72);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .info-modal.show { display: flex; }
+
+        .info-panel {
+            width: min(760px, 95vw);
+            max-height: 82vh;
+            overflow-y: auto;
+            background: rgba(5, 20, 20, 0.95);
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 18px rgba(0, 255, 209, 0.25);
+            padding: 16px;
+            color: #dff;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .info-panel h3 {
+            margin: 0 0 8px 0;
+            color: var(--neon-cyan);
+            letter-spacing: 1px;
+        }
+
+        .info-close {
+            float: right;
+            border: 1px solid var(--neon-cyan);
+            background: rgba(0,0,0,0.6);
+            color: var(--neon-cyan);
+            padding: 4px 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .search-box {
+            padding: 15px;
+            border-bottom: var(--glass-border);
+        }
+        
+        input#search {
+            width: calc(100% - 4px);
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 10px;
+            font-family: inherit;
+            text-transform: uppercase;
+            outline: none;
+            box-sizing: border-box;
+        }
+        
+        input#search:focus {
+            box-shadow: 0 0 15px rgba(0, 255, 209, 0.2);
+        }
+        
+        .mode-filter {
+            padding: 8px 15px;
+            border-bottom: var(--glass-border);
+            display: flex;
+            gap: 8px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 7px 5px;
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        .mode-btn.active {
+            background: var(--neon-cyan);
+            color: #000;
+            font-weight: bold;
+        }
+
+        .time-filter {
+            padding: 10px 15px;
+            border-bottom: var(--glass-border);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .time-btn {
+            flex: 1 1 calc(33.33% - 8px);
+            min-width: 90px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 8px 5px;
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        .time-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        
+        .time-btn:hover {
+            background: rgba(0, 255, 209, 0.1);
+        }
+        
+        .time-btn.active {
+            background: var(--neon-cyan);
+            color: #000;
+            font-weight: bold;
+        }
+
+        .sort-filter {
+            padding: 8px 15px;
+            border-bottom: var(--glass-border);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .sort-btn {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 6px 5px;
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        .sort-btn:hover {
+            background: rgba(0, 255, 209, 0.1);
+        }
+
+        .sort-btn.active {
+            background: var(--neon-cyan);
+            color: #000;
+            font-weight: bold;
+        }
+
+        .panel-head {
+            padding: 6px 15px 4px 15px;
+            border-bottom: 1px solid rgba(0,255,209,0.22);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            font-size: 10px;
+            color: #9ec;
+            letter-spacing: 1px;
+        }
+
+        .collapse-btn {
+            background: rgba(0,0,0,0.45);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            width: 22px;
+            height: 18px;
+            line-height: 14px;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0;
+        }
+
+        .filter-grid {
+            padding: 8px 15px;
+            border-bottom: var(--glass-border);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .filter-grid input {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(0,255,209,0.5);
+            color: #dff;
+            font-family: inherit;
+            font-size: 10px;
+            padding: 5px 6px;
+        }
+
+        .filter-actions {
+            padding: 0 15px 8px 15px;
+            border-bottom: var(--glass-border);
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-btn {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 6px 5px;
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .bottom-actions {
+            margin-top: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+        }
+
+        .bottom-actions button {
+            background: rgba(0,255,209,0.1);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 7px 4px;
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .scan-progress {
+            margin: 6px 15px 8px 15px;
+            border: 1px solid rgba(0, 255, 209, 0.45);
+            background: rgba(0, 0, 0, 0.45);
+            height: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scan-progress.compact {
+            margin: 8px 0 0 0;
+            height: 16px;
+        }
+
+        .scan-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, rgba(0,255,209,0.35), rgba(0,255,209,0.9));
+            transition: width 0.25s ease;
+        }
+
+        .scan-progress.loading .scan-progress-bar {
+            width: 30% !important;
+            animation: scan-shimmer 1.1s linear infinite;
+        }
+
+        @keyframes scan-shimmer {
+            0% { transform: translateX(-60%); opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { transform: translateX(260%); opacity: 0.5; }
+        }
+
+        .scan-progress-text {
+            position: absolute;
+            inset: 0;
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #dff;
+            text-shadow: 0 0 4px #000;
+            letter-spacing: 0.4px;
+        }
+        
+        .heatmap-toggle {
+            padding: 10px 15px;
+            border-bottom: var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        
+        .heatmap-toggle:hover {
+            background: rgba(0, 255, 209, 0.05);
+        }
+        
+        .toggle-switch {
+            width: 40px;
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-cyan);
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.on {
+            background: var(--neon-cyan);
+        }
+        
+        .toggle-switch .knob {
+            width: 16px;
+            height: 16px;
+            background: var(--neon-cyan);
+            border-radius: 50%;
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.on .knob {
+            transform: translateX(20px);
+            background: #000;
+        }
+
+        /* --- Paper Stream --- */
+        .paper-stream {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+        
+        /* Custom Scrollbar */
+        .paper-stream::-webkit-scrollbar { width: 5px; }
+        .paper-stream::-webkit-scrollbar-thumb { background: var(--neon-cyan); }
+        .paper-stream::-webkit-scrollbar-track { background: #000; }
+
+        .paper-card {
+            padding: 15px;
+            border-bottom: 1px solid rgba(0, 255, 209, 0.1);
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+        }
+        
+        .paper-card:hover {
+            background: rgba(0, 255, 209, 0.05);
+            border-left: 3px solid var(--neon-cyan);
+        }
+        
+        .paper-meta {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .paper-title {
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 1.4;
+            margin-bottom: 6px;
+            color: #fff;
+        }
+        
+        .paper-lab {
+            font-size: 10px;
+            color: var(--neon-cyan);
+        }
+        
+        .badge-row {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .impact-badge {
+            font-size: 9px;
+            padding: 2px 4px;
+            border-radius: 2px;
+            background: #000;
+            border: 1px solid;
+        }
+
+        .citation-badge {
+            font-size: 9px;
+            padding: 2px 4px;
+            border-radius: 2px;
+            background: #000;
+            border: 1px solid #68d5ff;
+            color: #68d5ff;
+        }
+        
+        /* --- Map Markers (Pulse) --- */
+        .pulse-icon {
+            position: relative;
+        }
+        .pulse-icon::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 100%; height: 100%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 1px solid currentColor;
+            opacity: 0;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { width: 100%; height: 100%; opacity: 1; }
+            100% { width: 300%; height: 300%; opacity: 0; }
+        }
+
+        /* --- Loading Radar --- */
+        .radar-spinner {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--neon-cyan);
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-right: 5px;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* --- Popup Styling --- */
+        .leaflet-popup-content-wrapper {
+            background: rgba(5, 20, 20, 0.95) !important;
+            border: 1px solid var(--neon-cyan);
+            border-radius: 0 !important;
+            color: #fff !important;
+            font-family: 'Courier New', monospace;
+        }
+        .leaflet-popup-tip { background: var(--neon-cyan) !important; }
+
+        /* City label next to points */
+        .city-name-label {
+            background: rgba(5, 20, 20, 0.78) !important;
+            border: 1px solid rgba(0, 255, 209, 0.28);
+            color: #bfffea;
+            font-size: 9px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.3px;
+            padding: 2px 4px;
+            border-radius: 2px;
+            box-shadow: 0 0 6px rgba(0, 255, 209, 0.12);
+        }
+        .city-name-label:before {
+            border-top-color: rgba(0, 255, 209, 0.25) !important;
+        }
+        
+        /* --- Dashboard Panel (底部固定) --- */
+        .dashboard {
+            position: absolute;
+            bottom: 0; left: 380px; right: 0;
+            height: 200px;
+            background: var(--glass-bg);
+            border-top: var(--glass-border);
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1.3fr; /* Timeline | Countries | Console */
+            gap: 10px;
+            padding: 12px;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        
+        .dashboard-column {
+            min-width: 0;
+            padding: 0 6px;
+            overflow: hidden;
+        }
+
+        .console-column {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        
+        .dashboard h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: var(--neon-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .mini-btn {
+            background: rgba(0,0,0,0.45);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            font-size: 11px;
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+
+        .mini-btn:hover {
+            background: rgba(0,255,209,0.12);
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .metric-card {
+            border: 1px solid rgba(0,255,209,0.28);
+            background: rgba(0,0,0,0.35);
+            padding: 4px 5px;
+            text-align: center;
+        }
+
+        .metric-card .k {
+            font-size: 9px;
+            color: #9ec;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .metric-card .v {
+            font-size: 12px;
+            color: var(--neon-cyan);
+            font-weight: 700;
+            margin-top: 2px;
+        }
+        
+        .chart-container {
+            margin-bottom: 20px;
+            height: 180px;
+        }
+
+        .timeline-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 3200;
+            background: rgba(0,0,0,0.75);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .timeline-modal.show { display: flex; }
+
+        .timeline-modal-panel {
+            width: min(1100px, 96vw);
+            height: min(620px, 88vh);
+            background: rgba(5, 20, 20, 0.96);
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 22px rgba(0,255,209,0.28);
+            padding: 14px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .timeline-modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--neon-cyan);
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .timeline-modal-body {
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .rank-list {
+            font-size: 11px;
+            line-height: 1.6;
+        }
+        
+        .rank-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(0, 255, 209, 0.1);
+        }
+        
+        /* 移除toggle按钮相关样式 */
+        
+    </style>
+</head>
+<body>
+
+    <!-- News Ticker -->
+    <div class="news-ticker">
+        <div class="ticker-label">🔴 LIVE FEED</div>
+        <div class="ticker-content" id="tickerContent">
+            <span class="ticker-item">Initializing radar system...</span>
+        </div>
+    </div>
+
+    <button class="info-btn" onclick="toggleInfoModal(true)">i</button>
+
+    <div id="map"></div>
+    
+
+    <!-- Analytics Dashboard (底部固定) -->
+    <div class="dashboard" id="dashboard">
+        <div class="dashboard-column">
+            <div class="timeline-header">
+                <h3 style="margin:0; font-size:12px;"><i class="fas fa-chart-line"></i> TIMELINE</h3>
+                <button class="mini-btn" onclick="openTimelineModal()" title="Enlarge timeline">⤢</button>
+            </div>
+            <div class="metric-grid" id="metricGrid">
+                <div class="metric-card"><div class="k">Target</div><div class="v" id="mTarget">0</div></div>
+                <div class="metric-card"><div class="k">On Map</div><div class="v" id="mMap">0</div></div>
+                <div class="metric-card"><div class="k">ArXiv</div><div class="v" id="mArxiv">0</div></div>
+                <div class="metric-card"><div class="k">Pending</div><div class="v" id="mPending">0</div></div>
+                <div class="metric-card"><div class="k">Unknown</div><div class="v" id="mUnknown">0</div></div>
+            </div>
+            <div style="height:100px;">
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="dashboard-column">
+            <h3 style="margin:0 0 10px 0; font-size:12px;"><i class="fas fa-globe"></i> TOP COUNTRIES</h3>
+            <div class="rank-list" id="countryRank" style="font-size:10px;"></div>
+        </div>
+        
+        <div class="dashboard-column console-column">
+            <h3 style="margin:0 0 10px 0; font-size:12px;"><i class="fas fa-terminal"></i> CONSOLE</h3>
+            <div class="terminal-console" id="terminalConsole">
+                <div id="terminalContent"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="sidebar">
+        <div class="header">
+            <h1><i class="fas fa-satellite-dish"></i> FRONTIERLAB ATLAS · PHD LAB & JOURNAL GEONAVIGATOR</h1>
+            <div class="version-tag">v 0.8</div>
+            <div class="status-bar">
+                <span id="system-status">ONLINE</span>
+                <span id="clock">00:00:00</span>
+            </div>
+            <div class="scan-progress compact" id="scanProgressWrap">
+                <div class="scan-progress-bar" id="scanProgressBar"></div>
+                <div class="scan-progress-text" id="scanProgressText">IDLE</div>
+            </div>
+        </div>
+        
+        <div class="search-box" style="display:flex; gap:5px;">
+            <input type="text" id="search" placeholder="INPUT KEYWORDS..." value="LLM, Agent" style="flex:1;">
+            <button onclick="fetchPapers()" style="background:var(--neon-cyan); color:#000; border:none; padding:10px 20px; font-family:inherit; font-weight:bold; cursor:pointer; font-size:10px;">
+                <i class="fas fa-search"></i> SCAN
+            </button>
+        </div>
+        
+        <div class="mode-filter">
+            <button class="mode-btn" data-mode="radar">RADAR 1DAY</button>
+            <button class="mode-btn active" data-mode="history">HISTORY</button>
+        </div>
+
+        <div class="time-filter">
+            <button class="time-btn" data-days="7">7 DAYS</button>
+            <button class="time-btn active" data-days="30">30 DAYS</button>
+            <button class="time-btn" data-days="90">90 DAYS</button>
+            <button class="time-btn" data-days="180">6 MONTHS</button>
+            <button class="time-btn" data-days="365">1 YEAR</button>
+            <button class="time-btn" data-days="730">2 YEARS</button>
+        </div>
+
+        <div class="panel-head">
+            <span class="panel-title">SORT</span>
+            <button class="collapse-btn" id="sortCollapseBtn" onclick="toggleSortPanel()">−</button>
+        </div>
+        <div class="sort-filter" id="sortControls">
+            <button class="sort-btn active" data-sort="date">SORT: DATE</button>
+            <button class="sort-btn" data-sort="if">SORT: IF</button>
+            <button class="sort-btn" data-sort="citation">SORT: CIT</button>
+        </div>
+
+        <div class="panel-head">
+            <span class="panel-title">FILTER</span>
+            <button class="collapse-btn" id="filterCollapseBtn" onclick="toggleFilterPanel()">−</button>
+        </div>
+        <div class="filter-grid" id="filterGrid">
+            <input id="ifMin" type="number" step="0.01" placeholder="IF min" />
+            <input id="ifMax" type="number" step="0.01" placeholder="IF max" />
+            <input id="citMin" type="number" step="1" placeholder="Citation min" />
+            <input id="citMax" type="number" step="1" placeholder="Citation max" />
+        </div>
+        <div class="filter-actions" id="filterActions">
+            <button class="action-btn" onclick="applyNumericFilters()">APPLY FILTER</button>
+            <button class="action-btn" onclick="resetNumericFilters()">RESET FILTER</button>
+            <input id="importFileInput" type="file" accept="application/json" style="display:none" onchange="importVisibleData(event)" />
+        </div>
+        
+        <!-- 移除热力图开关 -->
+        
+        <div class="paper-stream" id="paper-list">
+            <!-- Items injected here -->
+        </div>
+        
+        <div class="header" style="border-top: var(--glass-border); border-bottom: none; font-size: 10px;">
+            <div id="stats-summary">MONITORING 0 TARGETS</div>
+            <div class="bottom-actions">
+                <button onclick="fitMapToMarkers()"><i class="fas fa-expand"></i> FIT TO DATA</button>
+                <button onclick="exportVisibleData()"><i class="fas fa-file-export"></i> EXPORT JSON</button>
+                <button onclick="triggerImportData()"><i class="fas fa-file-import"></i> IMPORT JSON</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="timeline-modal" id="timelineModal" onclick="if(event.target===this) closeTimelineModal()">
+        <div class="timeline-modal-panel">
+            <div class="timeline-modal-head">
+                <span><i class="fas fa-chart-bar"></i> TIMELINE · ENLARGED VIEW</span>
+                <button class="mini-btn" onclick="closeTimelineModal()">CLOSE</button>
+            </div>
+            <div class="timeline-modal-body">
+                <canvas id="timelineChartModal"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-modal" id="infoModal" onclick="if(event.target===this) toggleInfoModal(false)">
+        <div class="info-panel">
+            <button class="info-close" onclick="toggleInfoModal(false)">CLOSE</button>
+            <h3>ⓘ FRONTIERLAB ATLAS · PHD LAB & JOURNAL GEONAVIGATOR · HOW TO USE</h3>
+            <p><strong>Modes</strong><br>
+            • <strong>RADAR 1DAY</strong>: continuous monitoring, fixed 24h window, auto re-scan with countdown.<br>
+            • <strong>HISTORY</strong>: one-shot historical search (7D / 30D / 90D / 6M / 1Y / 2Y).</p>
+
+            <p><strong>Search Logic</strong><br>
+            Use comma-separated terms for strict AND match.<br>
+            Example: <code>LLM, Agent</code> means both must match title/abstract.</p>
+
+            <p><strong>Sorting</strong><br>
+            • SORT: DATE (newest first)<br>
+            • SORT: IF (highest IF first)</p>
+
+            <p><strong>Metrics</strong><br>
+            • Journal papers show <strong>IF</strong> (OpenAlex source metric proxy).<br>
+            • Preprints show <strong>ARXIV</strong>.</p>
+
+            <p><strong>Open Source</strong><br>
+            License: <strong>MIT</strong><br>
+            Publishing target: <strong>GitHub</strong></p>
+
+            <p><strong>Attribution</strong><br>
+            Author: <strong>OPENCLAW</strong><br>
+            Product direction / instruction: <strong>Yang Tang</strong></p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <script>
+        // --- Global Variables ---
+        let map;
+        const markers = {};
+        let pollInterval = null;
+        let currentDays = 30;
+        let timelineChart = null;
+        let timelineModalChart = null;
+        let lastTimelineData = {};
+        let lastQuery = '';
+        let terminalLines = [];
+        const MAX_TERMINAL_LINES = 160;
+        let lastGeoProgress = -1;
+        const SIDEBAR_WIDTH = 380;
+        let pulseRafId = null;
+        let pulseLastTs = 0;
+        let renderTimer = null;
+        let renderSession = 0;
+        let visiblePaperIds = new Set();
+        let visiblePapers = [];
+        let currentSort = 'date';
+        let currentMode = 'history';
+        let activeWindowDays = 30;
+        let currentScanToken = 0;
+        let sortPanelCollapsed = false;
+        let filterPanelCollapsed = false;
+        let radarRefreshTimer = null;
+        let radarCountdownTimer = null;
+        let radarHeartbeatTimer = null;
+        let radarNextScanAt = null;
+        const RADAR_INTERVAL_MS = 180000;
+        const RADAR_HEARTBEAT_MS = 10000;
+        const STATS_INTERVAL_MS = 10000;
+        let statsRefreshTimer = null;
+        let statsInFlight = false;
+        let scanInFlight = false;
+        let activeGeoRequestId = null;
+        let activeGeoTotal = 0;
+        
+        // --- Terminal Console Functions (定义在最前面) ---
+        function logTerminal(message, type = 'info') {
+            const timestamp = new Date().toISOString().split('T')[1].substring(0, 8);
+            const line = `[${timestamp}] ${message}`;
+            
+            terminalLines.push({ text: line, type: type });
+            
+            // Keep only last N lines
+            if (terminalLines.length > MAX_TERMINAL_LINES) {
+                terminalLines.shift();
+            }
+            
+            // Update display
+            const content = document.getElementById('terminalContent');
+            content.innerHTML = terminalLines
+                .map(l => `<div class="terminal-line ${l.type}">${l.text}</div>`)
+                .join('');
+            
+            // Auto scroll to bottom
+            const console = document.getElementById('terminalConsole');
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function toggleInfoModal(show) {
+            const modal = document.getElementById('infoModal');
+            if (!modal) return;
+            modal.classList.toggle('show', !!show);
+        }
+
+        function toggleSortPanel() {
+            sortPanelCollapsed = !sortPanelCollapsed;
+            const el = document.getElementById('sortControls');
+            const btn = document.getElementById('sortCollapseBtn');
+            if (el) el.style.display = sortPanelCollapsed ? 'none' : 'flex';
+            if (btn) btn.innerText = sortPanelCollapsed ? '+' : '−';
+        }
+
+        function toggleFilterPanel() {
+            filterPanelCollapsed = !filterPanelCollapsed;
+            const grid = document.getElementById('filterGrid');
+            const actions = document.getElementById('filterActions');
+            const btn = document.getElementById('filterCollapseBtn');
+            const display = filterPanelCollapsed ? 'none' : '';
+            if (grid) grid.style.display = display;
+            if (actions) actions.style.display = display;
+            if (btn) btn.innerText = filterPanelCollapsed ? '+' : '−';
+        }
+
+        function openTimelineModal() {
+            const modal = document.getElementById('timelineModal');
+            if (!modal) return;
+            modal.classList.add('show');
+            renderTimelineModalChart(lastTimelineData || {});
+        }
+
+        function closeTimelineModal() {
+            const modal = document.getElementById('timelineModal');
+            if (!modal) return;
+            modal.classList.remove('show');
+        }
+
+        function getClickLabel(target, event) {
+            const button = target.closest('button');
+            if (button) {
+                const label = (button.innerText || button.textContent || '').replace(/\s+/g, ' ').trim();
+                return `BUTTON -> ${label || 'UNNAMED'}`;
+            }
+
+            const input = target.closest('input, textarea, select');
+            if (input) {
+                const name = input.id || input.name || input.placeholder || input.tagName;
+                return `INPUT -> ${name}`;
+            }
+
+            const card = target.closest('.paper-card');
+            if (card) {
+                const titleEl = card.querySelector('.paper-title');
+                const title = (titleEl?.innerText || '').trim().slice(0, 64);
+                return `PAPER_CARD -> ${title || 'UNTITLED'}`;
+            }
+
+            if (target.closest('#map') || target.closest('.leaflet-pane') || target.classList?.contains('leaflet-container')) {
+                return `MAP_CLICK @ (${event.clientX}, ${event.clientY})`;
+            }
+
+            const text = (target.innerText || target.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+            return `CLICK -> ${target.tagName}${text ? ` "${text}"` : ''}`;
+        }
+
+        // 让地图“视觉中心”对齐到去掉左侧侧栏后的可见中心
+        function applySidebarViewportOffset(animated = false) {
+            if (!map) return;
+            map.panBy([-SIDEBAR_WIDTH / 2, 0], { animate: animated, duration: animated ? 0.6 : 0 });
+        }
+
+        function getEffectiveDays() {
+            return currentMode === 'radar' ? 1 : currentDays;
+        }
+
+        function stopRadarCountdown() {
+            if (radarCountdownTimer) {
+                clearInterval(radarCountdownTimer);
+                radarCountdownTimer = null;
+            }
+        }
+
+        function formatRadarCountdown(ms) {
+            const total = Math.max(0, Math.floor(ms / 1000));
+            const mm = String(Math.floor(total / 60)).padStart(2, '0');
+            const ss = String(total % 60).padStart(2, '0');
+            return `${mm}:${ss}`;
+        }
+
+        function startRadarCountdown() {
+            stopRadarCountdown();
+            if (currentMode !== 'radar' || !radarNextScanAt) return;
+
+            const statusEl = document.getElementById('system-status');
+            const tick = () => {
+                const remain = radarNextScanAt - Date.now();
+                if (remain <= 0) {
+                    statusEl.innerText = 'ACQUIRED · RADAR T-00:00';
+                    statusEl.style.color = 'var(--neon-cyan)';
+                    return;
+                }
+                statusEl.innerText = `ACQUIRED · RADAR T-${formatRadarCountdown(remain)}`;
+                statusEl.style.color = 'var(--neon-cyan)';
+            };
+
+            tick();
+            radarCountdownTimer = setInterval(tick, 1000);
+        }
+
+        function setAcquiredStatus() {
+            const statusEl = document.getElementById('system-status');
+            if (currentMode === 'radar' && radarNextScanAt) {
+                startRadarCountdown();
+            } else {
+                stopRadarCountdown();
+                statusEl.innerText = 'ACQUIRED';
+                statusEl.style.color = 'var(--neon-cyan)';
+            }
+        }
+
+        function stopRadarHeartbeat() {
+            if (radarHeartbeatTimer) {
+                clearInterval(radarHeartbeatTimer);
+                radarHeartbeatTimer = null;
+            }
+        }
+
+        function startRadarHeartbeat() {
+            stopRadarHeartbeat();
+            if (currentMode !== 'radar') return;
+
+            const beat = () => {
+                if (!radarNextScanAt) return;
+                const remain = Math.max(0, radarNextScanAt - Date.now());
+                logTerminal(`[RADAR] Next auto-refresh in ${formatRadarCountdown(remain)} (window ${activeWindowDays}d)`, 'info');
+            };
+
+            beat();
+            radarHeartbeatTimer = setInterval(beat, RADAR_HEARTBEAT_MS);
+        }
+
+        function stopRadarRefresh() {
+            if (radarRefreshTimer) {
+                clearInterval(radarRefreshTimer);
+                radarRefreshTimer = null;
+            }
+            radarNextScanAt = null;
+            stopRadarCountdown();
+            stopRadarHeartbeat();
+        }
+
+        function startRadarRefresh() {
+            stopRadarRefresh();
+
+            radarNextScanAt = Date.now() + RADAR_INTERVAL_MS;
+            startRadarCountdown();
+            startRadarHeartbeat();
+
+            radarRefreshTimer = setInterval(() => {
+                radarNextScanAt = Date.now() + RADAR_INTERVAL_MS;
+                startRadarCountdown();
+                logTerminal('[RADAR] Auto scan tick (24h window)', 'info');
+                fetchPapers();
+            }, RADAR_INTERVAL_MS);
+        }
+
+        function applyModeUiState() {
+            const isRadar = currentMode === 'radar';
+            const timeFilterEl = document.querySelector('.time-filter');
+            if (timeFilterEl) {
+                timeFilterEl.style.display = isRadar ? 'none' : 'flex';
+            }
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.disabled = isRadar;
+            });
+        }
+
+        function startStatsRefresh() {
+            if (statsRefreshTimer) return;
+            statsRefreshTimer = setInterval(() => {
+                refreshAnalyticsFromVisible();
+            }, STATS_INTERVAL_MS);
+            logTerminal('Analytics refresh timer started (10s)', 'info');
+        }
+
+        function stopStatsRefresh() {
+            if (statsRefreshTimer) {
+                clearInterval(statsRefreshTimer);
+                statsRefreshTimer = null;
+            }
+        }
+
+        function setSearchMode(mode) {
+            currentMode = mode === 'radar' ? 'radar' : 'history';
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.querySelector(`.mode-btn[data-mode="${currentMode}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            applyModeUiState();
+
+            if (currentMode === 'radar') {
+                logTerminal('MODE SWITCHED: RADAR (continuous, fixed 24h window)', 'warning');
+                stopRadarRefresh();
+            } else {
+                logTerminal('MODE SWITCHED: HISTORY (one-shot query)', 'info');
+                stopRadarRefresh();
+                stopStatsRefresh();
+            }
+
+            logTerminal('Mode changed. Click SCAN to run search.', 'info');
+        }
+
+        function stopPulseAnimation() {
+            if (pulseRafId) {
+                cancelAnimationFrame(pulseRafId);
+                pulseRafId = null;
+            }
+            pulseLastTs = 0;
+        }
+
+        function startPulseAnimation() {
+            stopPulseAnimation();
+
+            const ids = Object.keys(markers);
+            if (ids.length === 0) return;
+
+            const loop = (ts) => {
+                if (!pulseLastTs) pulseLastTs = ts;
+                const dt = Math.min(48, ts - pulseLastTs);
+                pulseLastTs = ts;
+
+                // 归一到60fps步长；高刷屏会更丝滑（由浏览器/屏幕决定）
+                const step60 = dt / 16.67;
+
+                // 指数平滑系数：避免“小-大”两段跳变
+                const alpha = 1 - Math.exp(-dt / 120);
+
+                for (const id in markers) {
+                    const item = markers[id];
+                    if (!item || !item.core || !item.pulse) continue;
+
+                    // 每个点独立相位/速度，避免全图同步
+                    item.pulse.phase = (item.pulse.phase + item.pulse.speed * 0.003 * step60) % 1; // 3x slower
+
+                    // 单一余弦波（端点速度为0），天然平滑
+                    const wave = 0.5 - 0.5 * Math.cos(item.pulse.phase * Math.PI * 2); // 0..1
+
+                    // 目标值
+                    const targetRadius = item.pulse.baseRadius + item.pulse.amplitude * wave;
+                    const targetFill = 0.48 + 0.34 * wave;
+                    const targetStroke = 0.58 + 0.30 * wave;
+                    const targetWeight = 1.0 + 0.85 * wave;
+
+                    // 平滑过渡（低通滤波）
+                    item.pulse.radiusCur += (targetRadius - item.pulse.radiusCur) * alpha;
+                    item.pulse.fillCur += (targetFill - item.pulse.fillCur) * alpha;
+                    item.pulse.strokeCur += (targetStroke - item.pulse.strokeCur) * alpha;
+                    item.pulse.weightCur += (targetWeight - item.pulse.weightCur) * alpha;
+
+                    item.core.setRadius(item.pulse.radiusCur);
+                    item.core.setStyle({
+                        fillOpacity: item.pulse.fillCur,
+                        opacity: item.pulse.strokeCur,
+                        weight: item.pulse.weightCur
+                    });
+                }
+
+                pulseRafId = requestAnimationFrame(loop);
+            };
+
+            pulseRafId = requestAnimationFrame(loop);
+        }
+        
+        // --- 1. Init Map (Dark Mode) ---
+        console.log('Initializing Leaflet map...');
+        try {
+            // 显式设置CRS为EPSG:3857（Web Mercator）确保坐标系统一致
+            map = L.map('map', {
+                crs: L.CRS.EPSG3857,  // 显式指定Web Mercator投影
+                zoomControl: false,
+                attributionControl: false,
+                worldCopyJump: false,
+                maxBounds: null,
+                preferCanvas: true,
+                zoomSnap: 0.25,  // 更小的缩放步进，避免跳跃
+                zoomDelta: 0.25
+            }).setView([30, 10], 2.5);
+            
+            // CartoDB Dark Matter (No Labels) 瓦片图层（EPSG:3857）
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+                minZoom: 1,
+                noWrap: true,
+                continuousWorld: false,  // 禁止世界重复
+                attribution: '&copy; OpenStreetMap, &copy; CartoDB'
+            }).addTo(map);
+            
+            // Add zoom control to right
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // 首屏中心按可视窗口（排除左侧sidebar）对齐
+            applySidebarViewportOffset(false);
+            
+            console.log('Map initialized with CRS: EPSG:3857');
+            logTerminal('Map initialized with Web Mercator projection (EPSG:3857)', 'success');
+            logTerminal('Map center aligned to viewport (sidebar offset applied)', 'info');
+        } catch (e) {
+            console.error('Map initialization error:', e);
+            logTerminal('Map initialization failed: ' + e.message, 'error');
+        }
+
+        // --- 2. Clock ---
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toISOString().split('T')[1].split('.')[0] + " UTC";
+        }, 1000);
+
+        // --- 3. Core Logic ---
+        
+        async function fetchPapers() {
+            if (scanInFlight) {
+                logTerminal('[SCAN] Already running, ignoring duplicate trigger', 'warning');
+                return;
+            }
+
+            scanInFlight = true;
+
+            const query = document.getElementById('search').value;
+            lastQuery = query;
+            const statusEl = document.getElementById('system-status');
+            const summaryEl = document.getElementById('stats-summary');
+            const scanToken = ++currentScanToken;
+
+            const effectiveDays = getEffectiveDays();
+            activeWindowDays = effectiveDays;
+            logTerminal(`SCAN INITIATED: Keywords="${query}", Mode=${currentMode.toUpperCase()}, Time Range=${effectiveDays} days`, 'info');
+
+            stopRadarCountdown();
+            if (currentMode === 'radar' && !radarRefreshTimer) {
+                startRadarRefresh();
+            }
+
+            stopStatsRefresh();
+            clearDashboard();
+            setScanProgress(0, 1, 'SCANNING...');
+            statusEl.innerHTML = '<span class="radar-spinner"></span> SCANNING';
+            statusEl.style.color = 'var(--neon-amber)';
+            summaryEl.innerText = 'SCANNING...';
+
+            // Stop any existing polling / streaming
+            if (pollInterval) clearInterval(pollInterval);
+            if (renderTimer) clearInterval(renderTimer);
+            renderTimer = null;
+            renderSession += 1;
+            lastGeoProgress = -1;
+
+            try {
+                logTerminal(`Connecting to OpenAlex API...`, 'info');
+
+                // HISTORY large window: split into 30-day chunks (tqdm-like progress)
+                if (currentMode === 'history' && effectiveDays > 30) {
+                    clearInterfaceState();
+
+                    const chunks = buildHistoryChunks(effectiveDays, 30);
+                    const totalChunks = chunks.length;
+
+                    for (let i = 0; i < totalChunks; i++) {
+                        if (scanToken !== currentScanToken) return;
+
+                        const c = chunks[i];
+                        const idx = i + 1;
+                        setScanProgress(i, totalChunks, `HISTORY CHUNK ${idx}/${totalChunks} • ${c.from} ~ ${c.to}`);
+                        summaryEl.innerText = `HISTORY PROGRESS: ${idx}/${totalChunks} (${Math.round((i/totalChunks)*100)}%)`;
+
+                        try {
+                            const res = await apiGetWithRetry(
+                                `api/papers?q=${encodeURIComponent(query)}&days=${c.days}&from=${c.from}&to=${c.to}&lite=1`,
+                                3,
+                                1500
+                            );
+                            if (scanToken !== currentScanToken) return;
+
+                            const data = res.data;
+                            const papers = (data.papers || []).sort((a, b) => new Date(b.date || '1970-01-01') - new Date(a.date || '1970-01-01'));
+
+                            updateInterface(papers, i === 0 ? 'replace' : 'append');
+                            logTerminal(`[HISTORY] Chunk ${idx}/${totalChunks} loaded: +${papers.length} papers`, 'success');
+                        } catch (chunkErr) {
+                            logTerminal(`[HISTORY] Chunk ${idx}/${totalChunks} failed after retries, skipped`, 'error');
+                        }
+                    }
+
+                    setScanProgress(totalChunks, totalChunks, `DONE ${totalChunks}/${totalChunks}`);
+                    setAcquiredStatus();
+                    logTerminal(`DONE: history chunk loading completed (${totalChunks} chunks)`, 'success');
+                    summaryEl.innerText = `TARGETS: ${visiblePapers.length} | DONE | WINDOW: ${effectiveDays}D`;
+                    return;
+                }
+
+                // Normal single-window scan (<=30 days or radar)
+                let usedDays = effectiveDays;
+                let res = await apiGetWithRetry(`api/papers?q=${encodeURIComponent(query)}&days=${effectiveDays}`, 3, 1200);
+                if (scanToken !== currentScanToken) {
+                    logTerminal('[SCAN] Stale response ignored', 'warning');
+                    return;
+                }
+
+                logTerminal(`API Response received: ${res.status} OK`, 'success');
+                let data = res.data;
+                let papers = data.papers || data;
+
+                // Radar fallback: if 1-day is too sparse, fallback to 7-day window
+                if (currentMode === 'radar' && effectiveDays === 1 && papers.length < 12) {
+                    logTerminal(`[RADAR] 1-day sparse (${papers.length}), fallback to 7-day window`, 'warning');
+                    usedDays = 7;
+                    res = await apiGetWithRetry(`api/papers?q=${encodeURIComponent(query)}&days=${usedDays}`, 3, 1200);
+                    if (scanToken !== currentScanToken) return;
+                    data = res.data;
+                    papers = data.papers || data;
+                }
+
+                activeWindowDays = usedDays;
+                logTerminal(`Papers fetched: ${papers.length} total (window ${usedDays}d)`, 'success');
+
+                const geoPending = data.geo_pending || 0;
+                activeGeoRequestId = data.request_id || null;
+                activeGeoTotal = geoPending;
+                if (geoPending > 0) {
+                    logTerminal(`Geocoding required for ${geoPending} institutions`, 'warning');
+                }
+
+                papers.sort((a, b) => new Date(b.date || '1970-01-01') - new Date(a.date || '1970-01-01'));
+
+                if (geoPending > 0) {
+                    statusEl.innerHTML = '<span class="radar-spinner"></span> GEOCODING';
+                    statusEl.style.color = 'var(--neon-amber)';
+                    summaryEl.innerText = `TARGETS: ${papers.length} | LOCATING: ${geoPending} LABS`;
+                    pollInterval = setInterval(() => pollGeocodingStatus(scanToken), 2000);
+                } else {
+                    activeGeoTotal = 0;
+                    setAcquiredStatus();
+                    summaryEl.innerText = `TARGETS: ${papers.length} | FILTER: KEYWORD AND-MATCH | MODE: ${currentMode.toUpperCase()} (${usedDays}D)`;
+                }
+
+                streamRenderByDate(papers);
+                setScanProgress(1, 1, 'DONE');
+
+                if (currentMode === 'radar') startStatsRefresh();
+                else stopStatsRefresh();
+            } catch (err) {
+                console.error(err);
+                logTerminal(`ERROR: ${err.message}`, 'error');
+                statusEl.innerText = 'ERROR';
+                statusEl.style.color = 'var(--neon-pink)';
+                setScanProgress(1, 1, 'ERROR');
+                if (currentMode === 'radar') startStatsRefresh();
+            } finally {
+                scanInFlight = false;
+            }
+        }
+
+        async function pollGeocodingStatus(scanToken = currentScanToken) {
+            try {
+                const res = await axios.get('api/papers/status');
+                if (scanToken !== currentScanToken) return;
+                const data = res.data;
+
+                // Ignore stale status from previous / other request generation
+                if (activeGeoRequestId && data.request_id && data.request_id !== activeGeoRequestId) {
+                    return;
+                }
+
+                // Guard against transient 0/0 completed states while we still expect pending
+                if (activeGeoTotal > 0 && (data.total || 0) === 0 && data.status === 'completed') {
+                    return;
+                }
+
+                const statusEl = document.getElementById('system-status');
+                const summaryEl = document.getElementById('stats-summary');
+
+                if (data.status === 'running') {
+                    statusEl.innerHTML = '<span class="radar-spinner"></span> GEOCODING';
+                    summaryEl.innerText = `LOCATING: ${data.completed}/${data.total}`;
+
+                    if (lastGeoProgress !== data.completed) {
+                        lastGeoProgress = data.completed;
+                        logTerminal(`GEOCODING PROGRESS: ${data.completed}/${data.total}`, 'info');
+                    }
+                } else if (data.status === 'completed') {
+                    setAcquiredStatus();
+                    const unknownCount = (data.papers || []).filter(p => p.geo_status === 'unknown' && !p.is_arxiv).length;
+                    summaryEl.innerText = `TARGETS: ${data.papers.length} | DONE | UNKNOWN: ${unknownCount}`;
+                    logTerminal(`DONE: geocoding completed ${data.completed}/${data.total}; unknown=${unknownCount} (max 2 retries)`, 'success');
+
+                    // Final full refresh once (avoid flicker during running)
+                    updateInterface(data.papers || [], 'replace');
+
+                    // Reset pending expectation
+                    activeGeoTotal = 0;
+
+                    // Stop polling
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            } catch (err) {
+                console.error('Polling error:', err);
+            }
+        }
+
+        function getImpactColor(paper) {
+            if (!paper) return '#00FFD1';
+            if (paper.is_arxiv) return '#9aa4ad';
+
+            const iff = Number(paper.impact_factor);
+            if (Number.isFinite(iff)) {
+                if (iff >= 10) return '#FF0055';
+                if (iff >= 5) return '#FFA600';
+                return '#00FFD1';
+            }
+            return '#4da3ff'; // IF N/A
+        }
+
+        function getImpactBadgeText(paper) {
+            if (!paper) return 'IF:N/A';
+            if (paper.is_arxiv) return 'ARXIV';
+            const iff = Number(paper.impact_factor);
+            if (!Number.isFinite(iff)) return 'IF:N/A';
+            return `IF:${iff.toFixed(2)}`;
+        }
+
+        function getCitationBadgeText(paper) {
+            const cit = Number(paper?.cited_by || 0);
+            return `CIT:${Number.isFinite(cit) ? cit : 0}`;
+        }
+
+        function getActiveFilters() {
+            const num = (id) => {
+                const v = document.getElementById(id)?.value;
+                if (v === '' || v === null || v === undefined) return null;
+                const n = Number(v);
+                return Number.isFinite(n) ? n : null;
+            };
+            return {
+                ifMin: num('ifMin'),
+                ifMax: num('ifMax'),
+                citMin: num('citMin'),
+                citMax: num('citMax')
+            };
+        }
+
+        function passesNumericFilters(paper, f = getActiveFilters()) {
+            const iff = Number(paper?.impact_factor);
+            const cit = Number(paper?.cited_by || 0);
+
+            if (f.ifMin !== null) {
+                if (!Number.isFinite(iff) || iff < f.ifMin) return false;
+            }
+            if (f.ifMax !== null) {
+                if (!Number.isFinite(iff) || iff > f.ifMax) return false;
+            }
+            if (f.citMin !== null && cit < f.citMin) return false;
+            if (f.citMax !== null && cit > f.citMax) return false;
+            return true;
+        }
+
+        function applyNumericFilters() {
+            clearDashboard();
+            rebuildDisplayFromVisible();
+            logTerminal('FILTER APPLIED (IF/CIT)', 'info');
+        }
+
+        function resetNumericFilters() {
+            ['ifMin', 'ifMax', 'citMin', 'citMax'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            clearDashboard();
+            rebuildDisplayFromVisible();
+            logTerminal('FILTER RESET', 'info');
+        }
+
+        function getPublishedUtcText(paper) {
+            const raw = paper?.published_utc;
+            if (raw && typeof raw === 'string') return raw;
+            if (paper?.date) return `${paper.date} 00:00:00 UTC`;
+            return 'Unknown UTC';
+        }
+
+        function setScanProgress(current, total, label = '') {
+            const wrap = document.getElementById('scanProgressWrap');
+            const bar = document.getElementById('scanProgressBar');
+            const text = document.getElementById('scanProgressText');
+            if (!bar || !text || !wrap) return;
+
+            const safeTotal = Math.max(1, total || 1);
+            const pct = Math.max(0, Math.min(100, Math.round((current / safeTotal) * 100)));
+            bar.style.width = `${pct}%`;
+            text.innerText = label || `PROGRESS ${current}/${safeTotal} (${pct}%)`;
+
+            const loading = /SCANNING|CONNECTING|LOADING/i.test(text.innerText) && pct === 0;
+            wrap.classList.toggle('loading', loading);
+            if (!loading) bar.style.transform = 'translateX(0)';
+        }
+
+        function updateMetricCards({ target = 0, onMap = 0, arxiv = 0, pending = 0, unknown = 0 } = {}) {
+            const map = {
+                mTarget: target,
+                mMap: onMap,
+                mArxiv: arxiv,
+                mPending: pending,
+                mUnknown: unknown
+            };
+            for (const [id, val] of Object.entries(map)) {
+                const el = document.getElementById(id);
+                if (el) el.innerText = String(val ?? 0);
+            }
+        }
+
+        function dateToIso(d) {
+            const y = d.getUTCFullYear();
+            const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function buildHistoryChunks(totalDays, chunkSize = 30) {
+            const chunks = [];
+            let remaining = totalDays;
+            let offset = 0;
+            const now = new Date();
+
+            while (remaining > 0) {
+                const size = Math.min(chunkSize, remaining);
+                const to = new Date(now);
+                to.setUTCDate(to.getUTCDate() - offset);
+                const from = new Date(to);
+                from.setUTCDate(from.getUTCDate() - size + 1);
+
+                chunks.push({
+                    from: dateToIso(from),
+                    to: dateToIso(to),
+                    days: size
+                });
+
+                remaining -= size;
+                offset += size;
+            }
+
+            return chunks;
+        }
+
+        async function apiGetWithRetry(url, retries = 3, baseDelayMs = 1200) {
+            let lastErr;
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    return await axios.get(url, { timeout: 120000 });
+                } catch (err) {
+                    lastErr = err;
+                    const code = err?.response?.status;
+                    const retriable = !code || [429, 500, 502, 503, 504].includes(code);
+                    if (!retriable || i === retries) break;
+                    const wait = baseDelayMs * Math.pow(2, i);
+                    logTerminal(`[RETRY] ${url} failed (${code || 'network'}), retry in ${Math.round(wait/1000)}s...`, 'warning');
+                    await new Promise(r => setTimeout(r, wait));
+                }
+            }
+            throw lastErr;
+        }
+
+        function exportVisibleData() {
+            const payload = {
+                exported_at: new Date().toISOString(),
+                mode: currentMode,
+                query: lastQuery || document.getElementById('search')?.value || '',
+                selected_days: currentDays,
+                active_window_days: activeWindowDays || getEffectiveDays(),
+                filters: getActiveFilters(),
+                count: visiblePapers.length,
+                papers: visiblePapers
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            a.href = url;
+            a.download = `frontierlab-atlas-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            logTerminal(`EXPORT DONE: ${visiblePapers.length} papers`, 'success');
+        }
+
+        function triggerImportData() {
+            const input = document.getElementById('importFileInput');
+            if (input) input.click();
+        }
+
+        function applyImportedContext(meta = {}) {
+            const query = meta.query || '';
+            if (query) {
+                const searchEl = document.getElementById('search');
+                if (searchEl) searchEl.value = query;
+                lastQuery = query;
+            }
+
+            const importedMode = (meta.mode === 'radar' || meta.mode === 'history') ? meta.mode : null;
+            if (importedMode) {
+                currentMode = importedMode;
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                const mbtn = document.querySelector(`.mode-btn[data-mode="${currentMode}"]`);
+                if (mbtn) mbtn.classList.add('active');
+                applyModeUiState();
+                stopRadarRefresh();
+                stopStatsRefresh();
+            }
+
+            const sd = Number(meta.selected_days);
+            if (Number.isFinite(sd) && sd > 0) {
+                currentDays = sd;
+                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                const tbtn = document.querySelector(`.time-btn[data-days="${currentDays}"]`);
+                if (tbtn) tbtn.classList.add('active');
+            }
+
+            const f = meta.filters || {};
+            const setVal = (id, v) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.value = (v === null || v === undefined) ? '' : String(v);
+            };
+            setVal('ifMin', f.ifMin);
+            setVal('ifMax', f.ifMax);
+            setVal('citMin', f.citMin);
+            setVal('citMax', f.citMax);
+        }
+
+        async function importVisibleData(event) {
+            const file = event?.target?.files?.[0];
+            if (!file) return;
+            try {
+                const txt = await file.text();
+                const data = JSON.parse(txt);
+                const papers = Array.isArray(data) ? data : (data.papers || []);
+                if (!Array.isArray(papers)) throw new Error('Invalid JSON format');
+
+                applyImportedContext(data || {});
+                clearDashboard();
+                clearInterfaceState();
+                updateInterface(papers, 'replace');
+                setAcquiredStatus();
+                setScanProgress(1, 1, 'IMPORTED');
+                logTerminal(`IMPORT DONE: ${papers.length} papers loaded from file`, 'success');
+            } catch (e) {
+                logTerminal(`IMPORT FAILED: ${e.message}`, 'error');
+            } finally {
+                const input = document.getElementById('importFileInput');
+                if (input) input.value = '';
+            }
+        }
+
+        async function loadDefaultSeed() {
+            try {
+                const res = await axios.get('api/default-seed');
+                const seed = res?.data || {};
+                const papers = seed.papers || [];
+                if (!Array.isArray(papers) || papers.length === 0) {
+                    logTerminal('No default seed dataset found.', 'info');
+                    return;
+                }
+
+                applyImportedContext(seed);
+                clearDashboard();
+                clearInterfaceState();
+                updateInterface(papers, 'replace');
+                setAcquiredStatus();
+                setScanProgress(1, 1, 'DEFAULT DATA LOADED');
+                logTerminal(`DEFAULT DATA LOADED: ${papers.length} papers`, 'success');
+            } catch (e) {
+                logTerminal(`Default seed load failed: ${e.message}`, 'warning');
+            }
+        }
+
+        function clearDashboard() {
+            const countryEl = document.getElementById('countryRank');
+            if (countryEl) countryEl.innerHTML = '';
+
+            if (timelineChart) {
+                timelineChart.destroy();
+                timelineChart = null;
+            }
+            if (timelineModalChart) {
+                timelineModalChart.destroy();
+                timelineModalChart = null;
+            }
+
+            lastTimelineData = {};
+
+            const ctx = document.getElementById('timelineChart')?.getContext('2d');
+            if (ctx) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            }
+
+            const metricIds = ['mTarget', 'mMap', 'mArxiv', 'mPending', 'mUnknown'];
+            metricIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = '0';
+            });
+        }
+
+        function clearInterfaceState() {
+            const listEl = document.getElementById('paper-list');
+            listEl.innerHTML = '';
+
+            stopPulseAnimation();
+            const oldMarkerCount = Object.keys(markers).length;
+            for (let id in markers) {
+                const item = markers[id];
+                if (!item) continue;
+                if (item.core) map.removeLayer(item.core);
+            }
+            Object.keys(markers).forEach(key => delete markers[key]);
+
+            visiblePaperIds = new Set();
+            visiblePapers = [];
+            logTerminal(`Cleared interface (markers=${oldMarkerCount})`, 'info');
+        }
+
+        function isExactMappable(p) {
+            const lat = Number(p.lat);
+            const lon = Number(p.lon);
+            const isArxiv = p.is_arxiv || false;
+            return !isArxiv && Number.isFinite(lat) && Number.isFinite(lon) &&
+                   lat !== 0 && lon !== 0 &&
+                   p.geo_status !== 'country_fallback' && p.geo_status !== 'fail' &&
+                   Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+        }
+
+        function streamRenderByDate(papers) {
+            const session = ++renderSession;
+            if (renderTimer) clearInterval(renderTimer);
+            renderTimer = null;
+
+            clearInterfaceState();
+
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+
+            const byDate = new Map();
+            for (const p of papers) {
+                const d = new Date(p.date || '1970-01-01');
+                if (d > today) continue; // 不展示未来日期
+                const key = p.date || '1970-01-01';
+                if (!byDate.has(key)) byDate.set(key, []);
+                byDate.get(key).push(p);
+            }
+
+            const dates = Array.from(byDate.keys()).sort((a, b) => new Date(b) - new Date(a));
+            let idx = 0;
+
+            const step = () => {
+                if (session !== renderSession) return;
+                if (idx >= dates.length) {
+                    if (renderTimer) clearInterval(renderTimer);
+                    renderTimer = null;
+                    if (currentMode === 'history') {
+                        logTerminal('HISTORY LIST LOADED: waiting geocoding finalization if pending', 'success');
+                    } else {
+                        logTerminal('RADAR CYCLE DONE: 24h snapshot loaded', 'success');
+                    }
+                    return;
+                }
+
+                const d = dates[idx++];
+                const chunk = byDate.get(d) || [];
+                updateInterface(chunk, 'append');
+                logTerminal(`Loaded day ${d}: +${chunk.length}`, 'info');
+            };
+
+            // 今日先显示
+            step();
+            renderTimer = setInterval(step, 700);
+        }
+
+        function clearRenderedLayers() {
+            const listEl = document.getElementById('paper-list');
+            if (listEl) listEl.innerHTML = '';
+
+            for (let id in markers) {
+                const item = markers[id];
+                if (item && item.core) map.removeLayer(item.core);
+            }
+            Object.keys(markers).forEach(key => delete markers[key]);
+        }
+
+        function ensureMarkerForPaper(p, color) {
+            const lat = Number(p.lat);
+            const lon = Number(p.lon);
+            const marker = L.circleMarker([lat, lon], {
+                radius: 5,
+                color: color,
+                weight: 1.4,
+                fillColor: color,
+                fillOpacity: 0.85
+            }).addTo(map);
+
+            const cityText = p.institution_city || 'Unknown City';
+            const ifText = p.is_arxiv
+                ? 'ARXIV'
+                : (Number.isFinite(Number(p.impact_factor)) ? `IF ${Number(p.impact_factor).toFixed(2)}` : 'IF N/A');
+            const popupContent = `
+                <div style="min-width:200px">
+                    <div style="color:${color}; font-weight:bold; border-bottom:1px solid #333; margin-bottom:5px;">${p.source || 'ARXIV'}</div>
+                    <div style="font-size:12px; margin-bottom:5px;">${p.title}</div>
+                    <div style="font-size:10px; color:#aaa;">${p.lab}</div>
+                    <div style="font-size:10px; color:#88d3ff; margin-top:3px;">📈 ${ifText} · 📚 CIT ${Number(p.cited_by || 0)}</div>
+                    <div style="font-size:10px; color:#888; margin-top:3px;">📍 ${cityText}</div>
+                    <div style="font-size:10px; margin-top:5px;">
+                        <a href="${p.url}" target="_blank" style="color:var(--neon-cyan)">[ACCESS DOCUMENT]</a>
+                    </div>
+                </div>
+            `;
+            marker.bindPopup(popupContent);
+
+            if (p.institution_city) {
+                marker.bindTooltip(p.institution_city, {
+                    permanent: true,
+                    direction: 'top',
+                    offset: [0, -8],
+                    className: 'city-name-label'
+                });
+            }
+
+            marker.bringToFront();
+            markers[p.id] = {
+                core: marker,
+                pulse: {
+                    phase: Math.random(),
+                    speed: 0.65 + Math.random() * 0.8,
+                    baseRadius: 4.8,
+                    amplitude: 2.2,
+                    radiusCur: 4.8,
+                    fillCur: 0.58,
+                    strokeCur: 0.68,
+                    weightCur: 1.2
+                }
+            };
+        }
+
+        function rebuildDisplayFromVisible() {
+            clearRenderedLayers();
+
+            const activeFilters = getActiveFilters();
+            const filteredPapers = visiblePapers.filter(p => p && p.id && passesNumericFilters(p, activeFilters));
+
+            for (const p of filteredPapers) {
+                if (isExactMappable(p) && !markers[p.id]) {
+                    const color = getImpactColor(p);
+                    ensureMarkerForPaper(p, color);
+                }
+            }
+
+            renderPaperList();
+            refreshAnalyticsFromVisible();
+
+            let validCoords = 0;
+            let pendingCoords = 0;
+            let unknownCoords = 0;
+            let arxivCount = 0;
+            for (const p of filteredPapers) {
+                if (p.is_arxiv) arxivCount += 1;
+                if (isExactMappable(p)) validCoords += 1;
+                else if (!p.is_arxiv && p.geo_status === 'pending') pendingCoords += 1;
+                else if (!p.is_arxiv && p.geo_status === 'unknown') unknownCoords += 1;
+            }
+
+            updateMetricCards({
+                target: visiblePapers.length,
+                onMap: validCoords,
+                arxiv: arxivCount,
+                pending: pendingCoords,
+                unknown: unknownCoords
+            });
+
+            const summaryEl = document.getElementById('stats-summary');
+            if (summaryEl) {
+                summaryEl.innerText = `TARGETS: ${visiblePapers.length} | DISPLAYED: ${filteredPapers.length} | MAPPED: ${validCoords} | ARXIV: ${arxivCount} | PENDING: ${pendingCoords} | UNKNOWN: ${unknownCoords}`;
+            }
+        }
+
+        function renderPaperList() {
+            const listEl = document.getElementById('paper-list');
+            listEl.innerHTML = '';
+
+            const activeFilters = getActiveFilters();
+            const filteredForList = visiblePapers.filter(p => passesNumericFilters(p, activeFilters));
+
+            const sorted = [...filteredForList].sort((a, b) => {
+                if (currentSort === 'if') {
+                    const aIf = Number.isFinite(Number(a.impact_factor)) ? Number(a.impact_factor) : (a.is_arxiv ? -2 : -1);
+                    const bIf = Number.isFinite(Number(b.impact_factor)) ? Number(b.impact_factor) : (b.is_arxiv ? -2 : -1);
+                    if (bIf !== aIf) return bIf - aIf;
+                    return new Date(b.date || '1970-01-01') - new Date(a.date || '1970-01-01');
+                }
+
+                if (currentSort === 'citation') {
+                    const aCit = Number(a.cited_by || 0);
+                    const bCit = Number(b.cited_by || 0);
+                    if (bCit !== aCit) return bCit - aCit;
+                    return new Date(b.date || '1970-01-01') - new Date(a.date || '1970-01-01');
+                }
+
+                const dateDiff = new Date(b.date || '1970-01-01') - new Date(a.date || '1970-01-01');
+                if (dateDiff !== 0) return dateDiff;
+
+                const aIf = Number.isFinite(Number(a.impact_factor)) ? Number(a.impact_factor) : -1;
+                const bIf = Number.isFinite(Number(b.impact_factor)) ? Number(b.impact_factor) : -1;
+                return bIf - aIf;
+            });
+
+            sorted.forEach(p => {
+                const color = getImpactColor(p);
+                const isArxiv = p.is_arxiv || false;
+
+                let geoIcon = '';
+                if (isArxiv || p.geo_status === 'arxiv') {
+                    geoIcon = '<span style="color:#888; font-size:9px; margin-left:5px;">📄 PREPRINT</span>';
+                } else if (p.geo_status === 'pending') {
+                    geoIcon = '<span class="radar-spinner" style="margin-left:5px;"></span> Locating...';
+                } else if (p.geo_status === 'unknown') {
+                    geoIcon = '<i class="fas fa-question-circle" style="color:#9aa4ad;"></i> Unknown';
+                } else if (p.geo_status === 'failed') {
+                    geoIcon = '<i class="fas fa-exclamation-triangle" style="color:var(--neon-pink);"></i> Failed';
+                } else if (p.geo_status === 'cached') {
+                    geoIcon = '<i class="fas fa-check-circle" style="color:var(--neon-cyan);"></i>';
+                } else {
+                    geoIcon = '<i class="fas fa-map-marker-alt" style="color:var(--neon-cyan);"></i>';
+                }
+
+                const cardStyle = isArxiv ? 'opacity: 0.7;' : '';
+                const item = document.createElement('div');
+                item.className = 'paper-card';
+                item.innerHTML = `
+                    <div class="paper-meta">
+                        <span>${getPublishedUtcText(p)}</span>
+                        <span class="badge-row">
+                            <span class="impact-badge" style="color:${color}; border-color:${color}">${getImpactBadgeText(p)}</span>
+                            <span class="citation-badge">${getCitationBadgeText(p)}</span>
+                        </span>
+                    </div>
+                    <div class="paper-title" style="${cardStyle}">${p.title}</div>
+                    <div class="paper-lab" style="${cardStyle}">
+                        <i class="fas fa-university"></i> ${p.lab}
+                        ${geoIcon}
+                    </div>
+                `;
+
+                item.onclick = () => {
+                    const lat = Number(p.lat);
+                    const lon = Number(p.lon);
+                    if (!isArxiv && Number.isFinite(lat) && Number.isFinite(lon) && lat !== 0 && lon !== 0) {
+                        map.flyTo([lat, lon], 6, { duration: 1.2 });
+                        setTimeout(() => applySidebarViewportOffset(true), 80);
+                        if (markers[p.id] && markers[p.id].core) {
+                            setTimeout(() => markers[p.id].core.openPopup(), 1300);
+                        }
+                    } else if (isArxiv) {
+                        window.open(p.url, '_blank');
+                    }
+                };
+
+                listEl.appendChild(item);
+            });
+        }
+
+        function updateInterface(papers, mode = 'replace') {
+            if (mode === 'replace') {
+                clearInterfaceState();
+            }
+
+            const listEl = document.getElementById('paper-list');
+            let appended = 0;
+
+            papers.forEach(p => {
+                if (!p || !p.id) return;
+                if (visiblePaperIds.has(p.id)) return;
+
+                visiblePaperIds.add(p.id);
+                visiblePapers.push(p);
+                appended += 1;
+
+                const color = getImpactColor(p);
+                const isArxiv = p.is_arxiv || false;
+
+                // 1) Map marker
+                if (passesNumericFilters(p) && isExactMappable(p) && !markers[p.id]) {
+                    ensureMarkerForPaper(p, color);
+                }
+
+                // sidebar list rendering moved to renderPaperList()
+            });
+
+            renderPaperList();
+
+            const activeFilters = getActiveFilters();
+            const filteredPapers = visiblePapers.filter(p => passesNumericFilters(p, activeFilters));
+
+            // Recompute display stats from filtered set
+            let validCoords = 0;
+            let pendingCoords = 0;
+            let unknownCoords = 0;
+            let arxivCount = 0;
+            for (const p of filteredPapers) {
+                if (p.is_arxiv) arxivCount += 1;
+                if (isExactMappable(p)) {
+                    validCoords += 1;
+                } else if (!p.is_arxiv && p.geo_status === 'pending') {
+                    pendingCoords += 1;
+                } else if (!p.is_arxiv && p.geo_status === 'unknown') {
+                    unknownCoords += 1;
+                }
+            }
+
+            updateMetricCards({
+                target: visiblePapers.length,
+                onMap: validCoords,
+                arxiv: arxivCount,
+                pending: pendingCoords,
+                unknown: unknownCoords
+            });
+
+            const summaryEl = document.getElementById('stats-summary');
+            summaryEl.innerText = `TARGETS: ${visiblePapers.length} | DISPLAYED: ${filteredPapers.length} | MAPPED: ${validCoords} | ARXIV: ${arxivCount} | PENDING: ${pendingCoords} | UNKNOWN: ${unknownCoords}`;
+
+            updateNewsTicker(visiblePapers);
+            refreshAnalyticsFromVisible();
+
+            if (validCoords > 0) startPulseAnimation();
+            else stopPulseAnimation();
+
+            if (appended > 0) {
+                logTerminal(`Appended ${appended} papers | visible ${visiblePapers.length}`, 'success');
+            }
+        }
+
+        // --- 4. Mode + Time + Sort Filter ---
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const mode = this.dataset.mode || 'history';
+                setSearchMode(mode);
+            });
+        });
+
+        document.querySelectorAll('.time-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (currentMode === 'radar') return;
+
+                // Update active state
+                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update current days
+                currentDays = parseInt(this.dataset.days);
+                logTerminal(`TIME FILTER SELECTED: ${currentDays} days`, 'info');
+                
+                logTerminal('Time range changed. Click SCAN to run search.', 'info');
+            });
+        });
+
+        document.querySelectorAll('.sort-btn[data-sort]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.sort-btn[data-sort]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentSort = this.dataset.sort || 'date';
+                logTerminal(`LIST SORT CHANGED: ${currentSort.toUpperCase()}`, 'info');
+                renderPaperList();
+            });
+        });
+        
+        // --- 5. Country Heatmap ---
+        const COUNTRY_CENTERS = {
+            'US': [37.0902, -95.7129], 'CN': [35.8617, 104.1954], 'GB': [55.3781, -3.4360],
+            'CA': [56.1304, -106.3468], 'AU': [-25.2744, 133.7751], 'DE': [51.1657, 10.4515],
+            'FR': [46.2276, 2.2137], 'JP': [36.2048, 138.2529], 'KR': [35.9078, 127.7669],
+            'IN': [20.5937, 78.9629], 'RU': [61.5240, 105.3188], 'BR': [-14.2350, -51.9253],
+            'SG': [1.3521, 103.8198], 'CH': [46.8182, 8.2275], 'NL': [52.1326, 5.2913],
+            'SE': [60.1282, 18.6435], 'IL': [31.0461, 34.8516], 'IT': [41.8719, 12.5674],
+            'ES': [40.4637, -3.7492], 'TW': [23.6978, 120.9605], 'HK': [22.3193, 114.1694]
+        };
+        
+        // toggleHeatmap removed
+        
+        // renderHeatmap removed
+        
+        // --- 6. Dashboard & Analytics ---
+
+        function countryCodeToFlag(code) {
+            if (!code || String(code).length !== 2) return '🏳️';
+            const c = String(code).toUpperCase();
+            return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65) + String.fromCodePoint(0x1F1E6 + c.charCodeAt(1) - 65);
+        }
+
+        function refreshAnalyticsFromVisible() {
+            const today = new Date();
+            const cutoff = new Date();
+            cutoff.setUTCDate(cutoff.getUTCDate() - Math.max(1, activeWindowDays || getEffectiveDays()));
+
+            const dateCounter = {};
+            const countryCounter = {};
+            const countryNameMap = {
+                US: 'United States', CN: 'China', GB: 'United Kingdom', CA: 'Canada', AU: 'Australia',
+                DE: 'Germany', FR: 'France', JP: 'Japan', KR: 'South Korea', IN: 'India', RU: 'Russia',
+                BR: 'Brazil', SG: 'Singapore', CH: 'Switzerland', NL: 'Netherlands', SE: 'Sweden',
+                IL: 'Israel', IT: 'Italy', ES: 'Spain', HK: 'Hong Kong SAR', TW: 'Taiwan'
+            };
+
+            const activeFilters = getActiveFilters();
+            const filteredPapers = visiblePapers.filter(p => passesNumericFilters(p, activeFilters));
+
+            for (const p of filteredPapers) {
+                const d = new Date(p.date || '1970-01-01');
+                if (isNaN(d.getTime())) continue;
+                if (d > today || d < cutoff) continue;
+
+                const key = p.date || '1970-01-01';
+                dateCounter[key] = (dateCounter[key] || 0) + 1;
+
+                let cc = (p.institution_country || '').toUpperCase();
+                if (!cc) continue;
+                if (cc === 'TW') cc = 'CN';
+                countryCounter[cc] = (countryCounter[cc] || 0) + 1;
+            }
+
+            const sortedDateCounter = Object.keys(dateCounter)
+                .sort((a, b) => new Date(a) - new Date(b))
+                .reduce((acc, k) => { acc[k] = dateCounter[k]; return acc; }, {});
+
+            renderTimelineChart(sortedDateCounter);
+
+            const topCountries = Object.entries(countryCounter)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            const countryEl = document.getElementById('countryRank');
+            countryEl.innerHTML = topCountries.map(([code, count], idx) => `
+                <div class="rank-item">
+                    <span>${idx + 1}. ${countryCodeToFlag(code)} ${countryNameMap[code] || code}</span>
+                    <span style="color:var(--neon-cyan)">${count} papers</span>
+                </div>
+            `).join('');
+        }
+        
+        async function fetchStatistics(scanToken = currentScanToken) {
+            if (statsInFlight) return;
+            statsInFlight = true;
+            try {
+                const statsDays = activeWindowDays || getEffectiveDays();
+                logTerminal(`Fetching analytics statistics (${statsDays}d, ${currentMode})...`, 'info');
+                const res = await axios.get(`api/stats?days=${statsDays}`);
+
+                // Ignore stale stats responses from previous scans
+                if (scanToken !== currentScanToken) {
+                    return;
+                }
+
+                const data = res.data;
+                
+                // 1. Render Timeline Chart
+                renderTimelineChart(data.papers_by_date);
+                
+                // 2. Render Country Rank
+                const countryEl = document.getElementById('countryRank');
+                countryEl.innerHTML = data.top_countries.map((item, idx) => `
+                    <div class="rank-item">
+                        <span>${idx + 1}. ${item.flag || '🏳️'} ${item.country_name || item.country}</span>
+                        <span style="color:var(--neon-cyan)">${item.count} papers</span>
+                    </div>
+                `).join('');
+                
+                logTerminal(`Analytics updated: ${data.total_papers || 0} papers`, 'success');
+                
+            } catch (err) {
+                console.error('Failed to fetch stats:', err);
+                logTerminal(`Analytics fetch failed: ${err.message}`, 'error');
+            } finally {
+                statsInFlight = false;
+            }
+        }
+        
+        function renderTimelineChart(dateData) {
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+
+            const labels = Object.keys(dateData || {});
+            const values = Object.values(dateData || {});
+            lastTimelineData = { ...(dateData || {}) };
+
+            // Destroy existing chart
+            if (timelineChart) {
+                timelineChart.destroy();
+            }
+
+            timelineChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Papers per Day',
+                        data: values,
+                        backgroundColor: 'rgba(0, 255, 209, 0.6)',
+                        borderColor: 'rgba(0, 255, 209, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#aaa' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#aaa',
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            const modal = document.getElementById('timelineModal');
+            if (modal && modal.classList.contains('show')) {
+                renderTimelineModalChart(lastTimelineData);
+            }
+        }
+
+        function renderTimelineModalChart(dateData) {
+            const canvas = document.getElementById('timelineChartModal');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const labels = Object.keys(dateData || {});
+            const values = Object.values(dateData || {});
+
+            if (timelineModalChart) {
+                timelineModalChart.destroy();
+            }
+
+            timelineModalChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Papers per Day',
+                        data: values,
+                        backgroundColor: 'rgba(0, 255, 209, 0.55)',
+                        borderColor: 'rgba(0, 255, 209, 1)',
+                        borderWidth: 1.2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#ddd', font: { size: 12 } },
+                            grid: { color: 'rgba(255, 255, 255, 0.12)' }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#ddd',
+                                maxRotation: 45,
+                                minRotation: 45,
+                                font: { size: 11 }
+                            },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+        
+
+        // --- 8. News Ticker Update ---
+        function updateNewsTicker(papers) {
+            const tickerEl = document.getElementById('tickerContent');
+            const items = [];
+            
+            // 选择最新的、高影响力的论文
+            const topPapers = papers
+                .filter(p => !p.is_arxiv && Number.isFinite(Number(p.impact_factor)) && Number(p.impact_factor) >= 5)
+                .slice(0, 15);
+            
+            if (topPapers.length === 0) {
+                items.push(`<span class="ticker-item">🔍 RADAR ACTIVE: Monitoring ${papers.length} research papers across ${new Set(papers.map(p => p.institution_country)).size} countries...</span>`);
+            } else {
+                // 添加总览信息
+                const totalCitations = papers.reduce((sum, p) => sum + (p.cited_by || 0), 0);
+                items.push(`
+                    <span class="ticker-item">
+                        📡 <span class="highlight">SYSTEM STATUS</span>: 
+                        ${papers.length} papers tracked | 
+                        ${totalCitations} total citations | 
+                        ${new Set(papers.map(p => p.institution_country).filter(c => c)).size} countries active
+                    </span>
+                `);
+                
+                topPapers.forEach(p => {
+                    const lab = (p.lab || 'Unknown Lab').substring(0, 35);
+                    const country = p.institution_country || '??';
+                    const impact = Number(p.impact_factor);
+                    const cited = p.cited_by || 0;
+                    const authors = p.author_count || 0;
+                    const date = new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const oa_badge = p.is_open_access ? '🔓' : '';
+                    
+                    let emoji = '📊';
+                    if (impact >= 10) emoji = '🔥';
+                    else if (impact >= 5) emoji = '⚡';
+                    
+                    items.push(`
+                        <span class="ticker-item">
+                            ${emoji} ${oa_badge}
+                            <span class="lab-name">${lab}</span> 
+                            [${country}] 
+                            "${p.title.substring(0, 50)}..." 
+                            • <span class="highlight">${cited} citations</span> 
+                            • ${authors} authors 
+                            • IF ${Number.isFinite(impact) ? impact.toFixed(2) : 'N/A'} 
+                            • ${date}
+                        </span>
+                    `);
+                });
+            }
+            
+            // 双倍内容实现无缝循环
+            const content = items.join('') + items.join('');
+            tickerEl.innerHTML = content;
+        }
+
+        // --- 7. Map Controls ---
+        function fitMapToMarkers() {
+            const bounds = [];
+            for (let id in markers) {
+                const item = markers[id];
+                if (item && item.core) {
+                    bounds.push(item.core.getLatLng());
+                }
+            }
+            
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, {
+                    paddingTopLeft: [SIDEBAR_WIDTH + 20, 20],
+                    paddingBottomRight: [20, 20],
+                    maxZoom: 6
+                });
+                logTerminal(`FIT_TO_DATA executed: ${bounds.length} markers`, 'info');
+            } else {
+                logTerminal('FIT_TO_DATA skipped: no markers', 'warning');
+            }
+        }
+        
+        // --- 8. Event Listeners ---
+        document.getElementById('search').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                logTerminal('ENTER pressed in search input', 'info');
+                fetchPapers();
+            }
+        });
+
+        // 全局点击日志：记录用户每一次点击
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+
+            // 避免在console内部点击时刷屏
+            if (target.closest('#terminalConsole')) return;
+
+            const label = getClickLabel(target, event);
+            logTerminal(label, 'info');
+        }, true);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                toggleInfoModal(false);
+                closeTimelineModal();
+            }
+        });
+
+        // 窗口尺寸变化后，保持“可见地图中心”一致
+        window.addEventListener('resize', () => {
+            if (!map) return;
+            map.invalidateSize();
+            setTimeout(() => applySidebarViewportOffset(false), 80);
+        });
+
+        // 后台标签页暂停动画，前台恢复
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopPulseAnimation();
+            } else if (Object.keys(markers).length > 0) {
+                startPulseAnimation();
+            }
+        });
+        
+        // Initial Fetch
+        console.log('Starting initialization...');
+        logTerminal('=== FRONTIERLAB ATLAS · PHD LAB & JOURNAL GEONAVIGATOR SYSTEM ONLINE ===', 'success');
+        logTerminal('Default mode: HISTORY (one-shot). Switch to RADAR for continuous 1-day monitoring.', 'info');
+
+        applyModeUiState();
+        clearDashboard();
+        document.getElementById('stats-summary').innerText = 'MONITORING 0 TARGETS';
+        loadDefaultSeed();
+
+    </script>
+</body>
+</html>

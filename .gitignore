@@ -1,0 +1,21 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local runtime
+*.log
+
+# Local env
+.env
+
+# Local backups
+*.bak
+
+# Runtime caches / generated data
+data/*.json
+HEALTH_CHECK_*.md
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
