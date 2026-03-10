@@ -45,40 +45,41 @@ FrontierLab Atlas helps you answer in minutes:
 </p>
 <p align="center"><em>Global overview: map + paper stream + timeline + console in one workspace.</em></p>
 
-<table>
-  <tr>
-    <td width="50%">
-      <img src="assets/screenshots/sidebar-and-filters.jpg" alt="Sidebar, sort and filter panel" width="100%" />
-      <p align="center"><em>Search workflow with sort/filter and IF/CIT signals.</em></p>
-    </td>
-    <td width="50%">
-      <img src="assets/screenshots/map-paper-popup.jpg" alt="Map popup for paper details" width="100%" />
-      <p align="center"><em>Geo marker popup with venue, institution, IF and citation info.</em></p>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2">
-      <img src="assets/screenshots/timeline-enlarged.jpg" alt="Enlarged timeline chart" width="100%" />
-      <p align="center"><em>Enlarged timeline for publication density and trend reading.</em></p>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="assets/screenshots/sidebar-and-filters.jpg" alt="Sidebar, sort and filter panel" width="100%" />
+</p>
+<p align="center"><em>Search workflow with sort/filter and IF/CIT signals.</em></p>
+
+<p align="center">
+  <img src="assets/screenshots/map-paper-popup.jpg" alt="Map popup for paper details" width="100%" />
+</p>
+<p align="center"><em>Geo marker popup with venue, institution, IF and citation info.</em></p>
+
+<p align="center">
+  <img src="assets/screenshots/timeline-enlarged.jpg" alt="Enlarged timeline chart" width="100%" />
+</p>
+<p align="center"><em>Enlarged timeline for publication density and trend reading.</em></p>
 
 ---
 
 ## 🚀 Core capabilities
 
 ### 1) Dual working modes
-- **RADAR 1DAY**
-  - Continuous monitoring mode
-  - Starts with 1-day window
-  - Auto-fallback to 7-day when sparse
-  - Countdown shown in UI
 
-- **HISTORY**
-  - One-shot historical retrieval
+- **RADAR 1DAY** *(monitoring mode)*
+  - Runs continuously to surface newly relevant papers
+  - Starts with a strict 1-day window (fresh signal first)
+  - Auto-fallback to 7-day when daily volume is too sparse
+  - Includes countdown in UI so you always know next refresh timing
+
+- **HISTORY** *(exploration mode)*
+  - One-shot historical retrieval for mapping a field quickly
   - Time windows: `7D`, `30D`, `90D`, `6M`, `1Y`, `2Y`
-  - Large windows fetched in **30-day chunks** with progress
+  - Large windows fetched in **30-day chunks** with progress for stability
+
+**When to use which mode**
+- Use **RADAR** when you already know your topic and want to keep tracking the frontier.
+- Use **HISTORY** when entering a new subfield and you need a fast landscape overview.
 
 ### 2) Keyword logic (strict AND)
 - Comma-separated terms use strict **AND** matching on title/abstract
