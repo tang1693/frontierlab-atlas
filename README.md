@@ -1,19 +1,39 @@
-# FrontierLab Atlas: PhD Lab & Journal GeoNavigator
+<p align="center">
+  <h1 align="center">🌍 FrontierLab Atlas</h1>
+  <p align="center"><strong>PhD Lab & Journal GeoNavigator</strong></p>
+  <p align="center">
+    A modern research-intelligence map for new PhD students to quickly locate
+    <strong>frontier labs</strong>, understand <strong>global research geography</strong>,
+    and track <strong>high-impact journals/preprints</strong>.
+  </p>
+</p>
 
-FrontierLab Atlas: PhD Lab & Journal GeoNavigator is a visual research-intelligence cockpit built for **new PhD students**.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+" />
+  <img src="https://img.shields.io/badge/Flask-Backend-000000?style=for-the-badge&logo=flask&logoColor=white" alt="Flask" />
+  <img src="https://img.shields.io/badge/OpenAlex-Data%20Source-00A3FF?style=for-the-badge" alt="OpenAlex" />
+  <img src="https://img.shields.io/badge/Map-Leaflet-199900?style=for-the-badge&logo=leaflet&logoColor=white" alt="Leaflet" />
+</p>
 
-Instead of spending weeks manually reading and mapping a field, you can quickly answer:
+---
 
-- **Which labs are active at the frontier of a topic?**
-- **Where are those labs located globally?**
-- **Which journals/preprints are shaping the conversation right now?**
+## ✨ Why it matters for PhD onboarding
 
-### Why this is useful for PhD onboarding
-- Start from a keyword and get a global lab map in minutes.
-- Spot high-impact venues with IF/CIT signals at a glance.
-- Move from “I’m new to this field” to a concrete reading + lab-target list fast.
+Instead of spending weeks manually mapping a field, FrontierLab Atlas helps you answer in minutes:
 
-## Screenshots
+- **Which labs are active at the frontier of my topic?**
+- **Where are these labs located globally?**
+- **Which venues are shaping the conversation now?**
+
+### What you get, fast
+- 🧭 Keyword-to-landscape workflow (from query to global map)
+- 📍 Lab-level geographic visibility
+- 📈 IF/CIT-aware ranking and filtering
+- 📚 Faster reading-list + target-lab shortlisting
+
+---
+
+## 🖼 Screenshots
 
 <p align="center">
   <img src="assets/screenshots/dashboard-overview.jpg" alt="FrontierLab Atlas dashboard overview" width="100%" />
@@ -28,7 +48,7 @@ Instead of spending weeks manually reading and mapping a field, you can quickly 
     </td>
     <td width="50%">
       <img src="assets/screenshots/map-paper-popup.jpg" alt="Map popup for paper details" width="100%" />
-      <p align="center"><em>Geo marker popup with journal, institution, IF and citation info.</em></p>
+      <p align="center"><em>Geo marker popup with venue, institution, IF and citation info.</em></p>
     </td>
   </tr>
   <tr>
@@ -41,52 +61,51 @@ Instead of spending weeks manually reading and mapping a field, you can quickly 
 
 ---
 
-## What it does
+## 🚀 Core capabilities
 
-### 1) Two working modes
+### 1) Dual working modes
 - **RADAR 1DAY**
   - Continuous monitoring mode
-  - Starts with a 1-day window
-  - Auto-fallback to 7-day window when too sparse
+  - Starts with 1-day window
+  - Auto-fallback to 7-day when sparse
   - Countdown shown in UI
 
 - **HISTORY**
-  - One-shot retrieval mode
-  - Time ranges: `7D`, `30D`, `90D`, `6M`, `1Y`, `2Y`
-  - Large windows are fetched in **30-day chunks** with progress bar
+  - One-shot historical retrieval
+  - Time windows: `7D`, `30D`, `90D`, `6M`, `1Y`, `2Y`
+  - Large windows fetched in **30-day chunks** with progress
 
-### 2) Search logic
-- Comma-separated query terms use **AND matching** on title/abstract.
-- Example: `LLM, Agent` means both must match.
+### 2) Search semantics
+- Comma-separated terms use strict **AND** matching on title/abstract
+- Example: `LLM, Agent` means both terms must appear
 
-### 3) Quality + impact display
-- Journal papers show **IF** (OpenAlex source proxy: `2yr_mean_citedness`)
-- Preprints show **ARXIV**
-- Citation badge (`CIT`) available
-- Sort by Date / IF / Citation
+### 3) Quality & impact signals
+- Journal papers show **IF proxy** (`2yr_mean_citedness` from OpenAlex sources)
+- Preprints are labeled **ARXIV**
+- **Citation badge (CIT)** + sorting by Date / IF / Citation
 
-### 4) Geo handling
-- arXiv papers are excluded from geocoding pending queue
+### 4) Robust geo behavior
+- arXiv excluded from geocoding pending queue
 - Non-arXiv geocoding retries up to 2 times
 - After 2 failures, status becomes `unknown` and is cached
 
-### 5) Usability
+### 5) Research usability
 - Import / Export JSON
-- Import restores context (query/mode/days/filters)
+- Import restores query/mode/days/filters context
 - Numeric filters: IF min/max + Citation min/max
-- Timeline enlarge modal
+- Timeline enlarged modal view
 
 ---
 
-## Tech stack
+## 🧱 Tech stack
 
 - Python 3.10+
 - Flask
 - OpenAlex API (`works`, `sources`)
 - Leaflet + Chart.js frontend
-- Gunicorn (recommended production runtime)
+- Gunicorn (recommended in production)
 
-Key files:
+**Key files**
 - `paper_app.py` — API + scan/geocode orchestration
 - `paper_fetcher.py` — OpenAlex retrieval + relevance/IF enrichment
 - `geocoder.py` — geocode/cache logic
@@ -94,7 +113,7 @@ Key files:
 
 ---
 
-## Quick start (local)
+## ⚡ Quick start
 
 ```bash
 cd frontierlab-atlas
@@ -105,61 +124,37 @@ cp .env.example .env
 python3 paper_app.py
 ```
 
-Open:
-- `http://127.0.0.1:5000/`
-
-### Security note (recommended)
-- Keep the repository **Private** until all credentials are rotated.
-- Never commit `.env` or real API keys.
-- Use `.env.example` as template and keep real keys only in local `.env`.
-- If this repo was ever public with real keys, rotate those keys immediately.
+Open: `http://127.0.0.1:5000/`
 
 ---
 
-## Self-hosting: what others need to prepare
+## 🔐 Configuration & key hygiene
 
-If someone else wants to host FrontierLab Atlas: PhD Lab & Journal GeoNavigator, prepare the following:
+### Required API setup (core: only 2)
+1. **Geolocation API**
+   - Set `MAPS_CO_API_KEY` in `.env`
+2. **OpenAlex data access**
+   - Ensure outbound access to `api.openalex.org`
+   - Optional: set `OPENALEX_MAILTO` for polite pool/contact
 
-### A) Infrastructure
-1. A Linux server (recommended: **2 vCPU / 4GB RAM** minimum)
-2. Python 3.10+
-3. Public domain (optional but recommended)
-4. Reverse proxy + TLS (Caddy or Nginx)
-
-### B) Required API setup (only 2)
-1. **Geolocation API** (used by `geocoder.py`)
-   - Register your own provider key
-   - Set it via environment variable: `MAPS_CO_API_KEY`
-2. **OpenAlex data API** (used by paper retrieval)
-   - Ensure your deployment can access `api.openalex.org`
-   - Configure your own OpenAlex contact/email policy if needed
-3. Other API keys are optional and **not required** for the core FrontierLab Atlas flow.
-
-### C) Network / external access
-1. Outbound access to:
-   - `api.openalex.org`
-   - geocoding provider endpoints used by `geocoder.py`
-2. Inbound routing to app (typically via reverse proxy)
-
-### D) Runtime config
-1. Use **Gunicorn + systemd** in production (do not use Flask debug mode)
-2. Bind app to localhost (e.g. `127.0.0.1:5000`) behind reverse proxy
-3. Ensure writable `data/` directory for cache files
-
-### E) Security basics
-1. Rotate any leaked tokens/keys immediately
-2. Add basic auth or app auth for public deployments
-3. Enable rate limit at gateway/reverse proxy
-4. Keep service logs and monitor restart failures
-
-### F) Optional quality-of-life
-1. Daily backup for exported/imported user datasets
-2. Cron/system job for service health checks
-3. Alerting for 5xx spikes
+### Best practices
+- Never commit `.env` or real credentials
+- Keep `.env.example` as the only tracked template
+- Rotate keys immediately if exposure is suspected
 
 ---
 
-## API
+## 🌐 Self-hosting checklist
+
+- Linux server (recommended: **2 vCPU / 4GB RAM** minimum)
+- Python 3.10+
+- Reverse proxy + TLS (Caddy/Nginx)
+- Gunicorn + systemd in production
+- Writable `data/` directory for cache files
+
+---
+
+## 🧭 API endpoints
 
 - `GET /api/papers?q=<query>&days=<n>&from=<YYYY-MM-DD>&to=<YYYY-MM-DD>&lite=0|1`
 - `GET /api/papers/status`
@@ -168,13 +163,11 @@ If someone else wants to host FrontierLab Atlas: PhD Lab & Journal GeoNavigator,
 
 ---
 
-## Attribution
+## 🙌 Attribution
 
 - **Author:** OPENCLAW
 - **Product direction / instruction:** Yang Tang
 
----
-
-## License
+## 📄 License
 
 Please align `LICENSE.md` to your intended release model before public launch.
