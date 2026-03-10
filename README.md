@@ -8,6 +8,32 @@ FrontierLab Atlas: PhD Lab & Journal GeoNavigator is a research-intelligence map
 
 It is designed especially for **new PhD students** who need fast orientation in a new field.
 
+## Screenshots
+
+<p align="center">
+  <img src="assets/screenshots/dashboard-overview.jpg" alt="FrontierLab Atlas dashboard overview" width="100%" />
+</p>
+<p align="center"><em>Global overview: map + paper stream + timeline + console in one workspace.</em></p>
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="assets/screenshots/sidebar-and-filters.jpg" alt="Sidebar, sort and filter panel" width="100%" />
+      <p align="center"><em>Search workflow with sort/filter and IF/CIT signals.</em></p>
+    </td>
+    <td width="50%">
+      <img src="assets/screenshots/map-paper-popup.jpg" alt="Map popup for paper details" width="100%" />
+      <p align="center"><em>Geo marker popup with journal, institution, IF and citation info.</em></p>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <img src="assets/screenshots/timeline-enlarged.jpg" alt="Enlarged timeline chart" width="100%" />
+      <p align="center"><em>Enlarged timeline for publication density and trend reading.</em></p>
+    </td>
+  </tr>
+</table>
+
 ---
 
 ## What it does
