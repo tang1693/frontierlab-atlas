@@ -10,6 +10,7 @@ from geocoder import geocoder
 # OpenAlex API Base URL
 OPENALEX_API_URL = "https://api.openalex.org/works"
 OPENALEX_SOURCE_API_URL = "https://api.openalex.org/sources"
+OPENALEX_MAILTO = os.getenv("OPENALEX_MAILTO", "").strip()
 
 # Source IF proxy cache (persistent)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -187,9 +188,10 @@ def _fetch_source_works(source_filter, query_str, max_pages=6, per_page=200):
             "search": query_str,
             "per-page": per_page,
             "page": page,
-            "sort": "publication_date:desc",
-            "mailto": "your-email@example.com"
+            "sort": "publication_date:desc"
         }
+        if OPENALEX_MAILTO:
+            params["mailto"] = OPENALEX_MAILTO
 
         res = requests.get(OPENALEX_API_URL, params=params, timeout=25)
         res.raise_for_status()

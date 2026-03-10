@@ -66,7 +66,7 @@ Key files:
 ## Quick start (local)
 
 ```bash
-cd GeoSentinel
+cd frontierlab-atlas-clean
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
