@@ -1,12 +1,17 @@
 # FrontierLab Atlas: PhD Lab & Journal GeoNavigator
 
-FrontierLab Atlas: PhD Lab & Journal GeoNavigator is a research-intelligence map for quickly answering:
+FrontierLab Atlas: PhD Lab & Journal GeoNavigator is a visual research-intelligence cockpit built for **new PhD students**.
+
+Instead of spending weeks manually reading and mapping a field, you can quickly answer:
 
 - **Which labs are active at the frontier of a topic?**
-- **Where are they geographically?**
-- **Which journals/preprints are publishing now?**
+- **Where are those labs located globally?**
+- **Which journals/preprints are shaping the conversation right now?**
 
-It is designed especially for **new PhD students** who need fast orientation in a new field.
+### Why this is useful for PhD onboarding
+- Start from a keyword and get a global lab map in minutes.
+- Spot high-impact venues with IF/CIT signals at a glance.
+- Move from “I’m new to this field” to a concrete reading + lab-target list fast.
 
 ## Screenshots
 
