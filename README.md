@@ -19,17 +19,22 @@
 
 ## ✨ Why it matters for PhD onboarding
 
-Instead of spending weeks manually mapping a field, FrontierLab Atlas helps you answer in minutes:
+Thousands of papers are published every day, but only a small subset are truly field-shaping.
+Experienced PhDs usually know the “must-follow labs” already — this app helps new researchers reach that clarity much faster.
 
-- **Which labs are active at the frontier of my topic?**
-- **Where are these labs located globally?**
-- **Which venues are shaping the conversation now?**
+FrontierLab Atlas helps you answer in minutes:
+
+- **Which labs are truly active at the frontier of my topic?**
+- **Where are those labs located on the map?**
+- **Which venues are repeatedly producing high-quality work?**
 
 ### What you get, fast
-- 🧭 Keyword-to-landscape workflow (from query to global map)
-- 📍 Lab-level geographic visibility
-- 📈 IF/CIT-aware ranking and filtering
-- 📚 Faster reading-list + target-lab shortlisting
+- 🧭 Move from keyword to global lab landscape in one workflow
+- 📍 Quickly see where the strongest labs are concentrated
+- 📈 Filter and sort by IF/CIT to reduce noise
+- 📚 Build a practical “who to follow” list instead of reading blindly
+
+> The goal: get in weeks what often takes 2–3 years of trial-and-error during a PhD.
 
 ---
 
@@ -75,14 +80,16 @@ Instead of spending weeks manually mapping a field, FrontierLab Atlas helps you 
   - Time windows: `7D`, `30D`, `90D`, `6M`, `1Y`, `2Y`
   - Large windows fetched in **30-day chunks** with progress
 
-### 2) Search semantics
+### 2) Keyword logic (strict AND)
 - Comma-separated terms use strict **AND** matching on title/abstract
 - Example: `LLM, Agent` means both terms must appear
+- This avoids broad noisy retrieval and keeps results aligned with your actual research intent
 
-### 3) Quality & impact signals
+### 3) Quality & trend signals
 - Journal papers show **IF proxy** (`2yr_mean_citedness` from OpenAlex sources)
 - Preprints are labeled **ARXIV**
 - **Citation badge (CIT)** + sorting by Date / IF / Citation
+- Together, these signals help you spot high-quality labs and follow emerging trends faster
 
 ### 4) Robust geo behavior
 - arXiv excluded from geocoding pending queue
