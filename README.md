@@ -188,6 +188,20 @@ OPENALEX_MAILTO=your_email@example.com
 - Gunicorn + systemd in production
 - Writable `data/` directory for cache files
 
+### Common deployment issues
+
+1. **`Default seed load failed: 404`**
+   - Fixed in latest code (`/api/default-seed` now returns 200 even without seed files).
+   - Pull latest `main` and restart service.
+
+2. **`/api/papers` returns 500 on a new server**
+   - Usually outbound network to OpenAlex is blocked or timing out.
+   - Verify from server:
+     ```bash
+     curl -I https://api.openalex.org/works
+     ```
+   - Also confirm `.env` has valid `MAPS_CO_API_KEY` and process can read it.
+
 ---
 
 ## 🧭 API endpoints

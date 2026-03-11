@@ -8,7 +8,8 @@ from geocoder import geocoder
 
 # Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-GEODATA_DIR = os.path.join(BASE_DIR, 'geodata') 
+GEODATA_DIR = os.path.join(BASE_DIR, 'geodata')
+DATA_DIR = os.path.join(BASE_DIR, 'data')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'paper-sentinel-secret'
@@ -189,6 +190,38 @@ def get_geocoding_status():
             "request_id": geocoding_state.get("request_id"),
             "papers": geocoding_state["papers"]
         })
+
+@app.route('/api/default-seed', methods=['GET'])
+def get_default_seed():
+    """
+    Optional startup dataset for UI warm-start.
+    Return 200 with empty payload when no seed file exists (avoid frontend 404 noise).
+    """
+    candidates = [
+        os.path.join(DATA_DIR, 'default_seed.json'),
+        os.path.join(DATA_DIR, 'default_seed_papers.json')
+    ]
+
+    for path in candidates:
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                payload = json.load(f)
+            papers = payload if isinstance(payload, list) else (payload.get('papers') or [])
+            if not isinstance(papers, list):
+                papers = []
+            return jsonify({
+                'papers': papers,
+                'mode': (payload.get('mode') if isinstance(payload, dict) else 'history') or 'history',
+                'days': (payload.get('days') if isinstance(payload, dict) else 30) or 30,
+                'query': (payload.get('query') if isinstance(payload, dict) else 'LLM, Agent') or 'LLM, Agent'
+            })
+        except Exception as e:
+            return jsonify({'error': 'default_seed_read_failed', 'message': str(e)}), 500
+
+    return jsonify({'papers': [], 'mode': 'history', 'days': 30, 'query': 'LLM, Agent'})
+
 
 @app.route('/api/stats')
 def get_statistics():
