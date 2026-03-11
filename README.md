@@ -138,12 +138,25 @@ Open: `http://127.0.0.1:5000/`
 
 ## 🔐 Configuration & key hygiene
 
-### Required API setup (core: only 2)
-1. **Geolocation API**
-   - Set `MAPS_CO_API_KEY` in `.env`
-2. **OpenAlex data access**
-   - Ensure outbound access to `api.openalex.org`
-   - Optional: set `OPENALEX_MAILTO` for polite pool/contact
+### Minimal `.env` (copy/paste)
+
+```env
+MAPS_CO_API_KEY=your_maps_co_key
+OPENALEX_MAILTO=your_email@example.com
+```
+
+### What is actually required
+1. **`MAPS_CO_API_KEY`** (required)
+   - Used for institution/location geocoding
+   - Provider endpoint: `https://geocode.maps.co/...`
+2. **`OPENALEX_MAILTO`** (recommended, not a key)
+   - Optional contact email for OpenAlex polite pool
+   - OpenAlex itself is accessed via public API endpoints
+
+### Not used in FrontierLab Atlas core
+- `OPENALEX_API_KEY` (not read by current code)
+- `OPENCELLID_API_KEY`
+- `HF_TOKEN`
 
 ### Best practices
 - Never commit `.env` or real credentials
