@@ -134,6 +134,21 @@ python3 paper_app.py
 
 Open: `http://127.0.0.1:5000/`
 
+### Recommended deployment workflow (for backend teammates)
+
+Use **Git pull/clone** as the source of truth (recommended), not ad-hoc zip packaging.
+
+```bash
+git clone https://github.com/tang1693/frontierlab-atlas.git
+cd frontierlab-atlas
+cp .env.example .env
+# edit .env with your real values
+pip install -r requirements.txt
+python3 paper_app.py
+```
+
+> Note: `zip *` often misses dotfiles (e.g. `.env.example`). If you must package manually, include dotfiles explicitly.
+
 ---
 
 ## 🔐 Configuration & key hygiene
