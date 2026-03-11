@@ -55,6 +55,13 @@ def country_code_to_flag(code: str):
     code = code.upper()
     return chr(0x1F1E6 + ord(code[0]) - ord('A')) + chr(0x1F1E6 + ord(code[1]) - ord('A'))
 
+
+def monotonic_request_id():
+    """Compatibility helper for older Python runtimes lacking time.time_ns()."""
+    if hasattr(time, 'time_ns'):
+        return time.time_ns()
+    return int(time.time() * 1_000_000_000)
+
 @app.route('/')
 @app.route('/earth')
 def earth():
@@ -150,7 +157,7 @@ def get_papers():
         total_tasks = len(papers_need_geo) + len(papers_need_city)
 
         # Update global state (new request generation)
-        request_id = time.time_ns()
+        request_id = monotonic_request_id()
         with geocoding_state["lock"]:
             geocoding_state["papers"] = papers_with_cache
             geocoding_state["total"] = total_tasks
