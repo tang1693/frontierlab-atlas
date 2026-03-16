@@ -8,3 +8,4 @@ Pillow
 gTTS
 pysocks
 stem
+python-dotenv

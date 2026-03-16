@@ -155,6 +155,8 @@ python3 paper_app.py
 
 ### Minimal `.env` (copy/paste)
 
+> The app now auto-loads local `.env` (via `python-dotenv`) when started with `python3 paper_app.py`.
+
 ```env
 MAPS_CO_API_KEY=your_maps_co_key
 OPENALEX_MAILTO=your_email@example.com
@@ -201,6 +203,22 @@ OPENALEX_MAILTO=your_email@example.com
      curl -I https://api.openalex.org/works
      ```
    - Also confirm `.env` has valid `MAPS_CO_API_KEY` and process can read it.
+
+3. **Map shows `ON MAP = 0` and many `PENDING/UNKNOWN`**
+   - Most likely geocoding key/network issue.
+   - Verify geocoding endpoint from server:
+     ```bash
+     python3 - <<'PY'
+     import os, requests, urllib.parse
+     from dotenv import load_dotenv
+     load_dotenv('.env')
+     k=os.getenv('MAPS_CO_API_KEY','')
+     print('key_set', bool(k), 'len', len(k))
+     u=f"https://geocode.maps.co/search?q={urllib.parse.quote('University of Oxford')}&api_key={k}"
+     r=requests.get(u, timeout=15)
+     print('status', r.status_code, 'body', r.text[:160])
+     PY
+     ```
 
 ---
 

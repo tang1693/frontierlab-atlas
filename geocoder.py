@@ -3,6 +3,10 @@ import json
 import requests
 import time
 from urllib.parse import quote
+from dotenv import load_dotenv
+
+# Load local .env when running directly (e.g., python paper_app.py)
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # -----------------------------------------------------------------------------
 # Configuration

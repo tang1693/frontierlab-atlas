@@ -5,7 +5,11 @@ import time
 import random
 import re
 from datetime import datetime, timedelta, timezone
+from dotenv import load_dotenv
 from geocoder import geocoder
+
+# Load local .env when running directly (e.g., python paper_app.py)
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 # OpenAlex API Base URL
 OPENALEX_API_URL = "https://api.openalex.org/works"
