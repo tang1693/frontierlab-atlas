@@ -137,6 +137,13 @@ class SmartGeocoder:
         try:
             url = f"https://geocode.maps.co/search?q={quote(query)}&api_key={MAPS_CO_API_KEY}"
             res = requests.get(url, timeout=6)
+            
+            # 增强日志：打印所有非成功的响应
+            if res.status_code != 200:
+                print(f"[Geocoder] API返回非200状态: {res.status_code}, 响应: {res.text[:200]}")
+                time.sleep(1.0)  # 速率限制时等更久
+                return None, None, None
+            
             if res.status_code == 200:
                 data = res.json()
                 if data:
@@ -144,8 +151,11 @@ class SmartGeocoder:
                     lat = float(first['lat'])
                     lon = float(first['lon'])
                     city = self._extract_city(first.get('address', {}))
+                    time.sleep(1.0)  # maps.co 限制: 1 req/sec
                     return lat, lon, city
-            time.sleep(0.15)
+                else:
+                    print(f"[Geocoder] API返回空结果: query='{query}'")
+            time.sleep(1.0)  # maps.co 限制: 1 req/sec
         except Exception as e:
             print(f"[Geocoder] Forward API Error: {e}")
         return None, None, None
@@ -160,8 +170,11 @@ class SmartGeocoder:
             if res.status_code == 200:
                 data = res.json() or {}
                 city = self._extract_city(data.get('address', {}))
+                time.sleep(1.0)  # maps.co 限制: 1 req/sec
                 return city
-            time.sleep(0.15)
+            else:
+                print(f"[Geocoder] Reverse返回非200: {res.status_code}")
+            time.sleep(1.0)  # maps.co 限制: 1 req/sec
         except Exception as e:
             print(f"[Geocoder] Reverse API Error: {e}")
         return None
