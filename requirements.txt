@@ -9,3 +9,5 @@ gTTS
 pysocks
 stem
 python-dotenv
+beautifulsoup4
+lxml
