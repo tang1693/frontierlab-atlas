@@ -3,11 +3,17 @@ import json
 import time
 import threading
 from flask import Flask, render_template, jsonify, request
+from dotenv import load_dotenv
+
+# Load .env BEFORE importing other modules
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+# Now import modules that depend on env vars
 from paper_fetcher import fetch_recent_papers
 from geocoder import geocoder
 
 # Configuration
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GEODATA_DIR = os.path.join(BASE_DIR, 'geodata')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 
